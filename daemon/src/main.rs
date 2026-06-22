@@ -93,6 +93,21 @@ async fn main() {
         i += 1;
     }
 
+    if let Some(dir) = web_dir.as_ref() {
+        let path = PathBuf::from(dir);
+        if !path.exists() {
+            eprintln!("\x1b[31m❌ Web directory not found: {}\x1b[0m", path.display());
+            std::process::exit(1);
+        }
+        if !path.is_dir() {
+            eprintln!("\x1b[31m❌ Web directory is not a directory: {}\x1b[0m", path.display());
+            std::process::exit(1);
+        }
+        if let Ok(abs_path) = fs::canonicalize(&path) {
+            web_dir = Some(abs_path.to_string_lossy().into_owned());
+        }
+    }
+
     if run_mode || web_dir.is_some() {
         run_daemon(&db_path, &api_bind, web_dir).await;
     } else {
