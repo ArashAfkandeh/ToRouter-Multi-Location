@@ -1,0 +1,102 @@
+mod api;
+mod cli;
+mod config;
+mod daemon;
+mod tor_process;
+
+use std::env;
+use std::fs;
+use std::path::PathBuf;
+use crate::daemon::run_daemon;
+use crate::cli::run_cli;
+
+// مسیرها نسبت به daemon/src/main.rs → daemon/../../assets/
+pub const TOR_BINARY_DATA: &[u8] = include_bytes!("../../assets/tor-bin");
+pub const GEOIP_DATA:      &[u8] = include_bytes!("../../assets/geoip");
+pub const GEOIP6_DATA:     &[u8] = include_bytes!("../../assets/geoip6");
+
+// آدرس پیش‌فرض API — روی تمام interface‌ها
+const DEFAULT_API_BIND: &str = "0.0.0.0:9090";
+
+fn setup_auto_symlink() {
+    if env::consts::OS == "windows" { return; }
+    if let Ok(exe_path) = env::current_exe() {
+        let symlink_path = "/usr/local/bin/tor-p";
+        if let Ok(linked_to) = fs::read_link(symlink_path) {
+            if linked_to == exe_path { return; }
+            let _ = fs::remove_file(symlink_path);
+        }
+        if std::os::unix::fs::symlink(&exe_path, symlink_path).is_ok() {
+            println!("\n✨ Shortcut created: '\x1b[36mtor-p\x1b[0m' now works from anywhere.\n");
+        }
+    }
+}
+
+/// مسیر دیتابیس را کنار باینری می‌سازد (tor_db.sqlite)
+fn db_path_next_to_exe() -> String {
+    env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.join("tor_db.sqlite")))
+        .unwrap_or_else(|| PathBuf::from("tor_db.sqlite"))
+        .to_string_lossy()
+        .into_owned()
+}
+
+fn print_usage(name: &str) {
+    println!("\x1b[1m\x1b[36mTor Router\x1b[0m");
+    println!();
+    println!("  \x1b[36m{} --run\x1b[0m                     اجرای daemon بدون وب پنل", name);
+    println!("  \x1b[36m{} --web-dir <path>\x1b[0m          اجرای daemon با وب پنل", name);
+    println!("  \x1b[36m{}\x1b[0m (بدون آرگومان)           اجرای CLI", name);
+    println!();
+    println!("دیتابیس به‌صورت خودکار کنار باینری ساخته می‌شود: tor_db.sqlite");
+    println!("API روی {}  بالا می‌آید.", DEFAULT_API_BIND);
+}
+
+#[tokio::main]
+async fn main() {
+    setup_auto_symlink();
+
+    let args: Vec<String> = env::args().collect();
+    let db_path  = db_path_next_to_exe();
+    let api_bind = DEFAULT_API_BIND.to_string();
+
+    // بدون آرگومان → CLI
+    if args.len() == 1 {
+        run_cli(&api_bind).await;
+        return;
+    }
+
+    let mut web_dir:  Option<String> = None;
+    let mut run_mode: bool           = false;
+
+    let mut i = 1;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--run" => {
+                run_mode = true;
+            }
+            "--web-dir" if i + 1 < args.len() => {
+                web_dir = Some(args[i + 1].clone());
+                i += 1;
+            }
+            "--help" | "-h" => {
+                print_usage(&args[0]);
+                return;
+            }
+            unknown => {
+                eprintln!("\x1b[31m⚠️  آرگومان ناشناخته: {}\x1b[0m", unknown);
+                print_usage(&args[0]);
+                std::process::exit(1);
+            }
+        }
+        i += 1;
+    }
+
+    if run_mode || web_dir.is_some() {
+        run_daemon(&db_path, &api_bind, web_dir).await;
+    } else {
+        // هیچ flag معتبری داده نشده → CLI
+        run_cli(&api_bind).await;
+    }
+}
