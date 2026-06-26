@@ -113,8 +113,13 @@ pub async fn start_tor_instance(
     torrc.push_str(&format!("DataDirectory {}\n", instance_dir.display()));
     torrc.push_str(&format!("GeoIPFile {}\n",     geoip_path.display()));
     torrc.push_str(&format!("GeoIPv6File {}\n",   geoip6_path.display()));
-    torrc.push_str(&format!("ExitNodes {{{}}}\n", country_code.to_lowercase()));
-    torrc.push_str("StrictNodes 1\n");
+    
+    let cc = country_code.trim().to_lowercase();
+    if !cc.is_empty() {
+        torrc.push_str(&format!("ExitNodes {{{}}}\n", cc));
+        torrc.push_str("StrictNodes 1\n");
+    }
+    
     torrc.push_str("Log notice stdout\n");
     torrc.push_str("AvoidDiskWrites 1\n");
 

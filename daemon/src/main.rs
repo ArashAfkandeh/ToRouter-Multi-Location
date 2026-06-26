@@ -4,7 +4,6 @@ mod config;
 mod daemon;
 mod tor_process;
 mod router;
-mod socks5;
 
 use std::env;
 use std::fs;
@@ -13,12 +12,12 @@ use crate::daemon::run_daemon;
 use crate::cli::run_cli;
 use tracing_subscriber::EnvFilter;
 
-// مسیرها نسبت به daemon/src/main.rs → daemon/../../assets/
+// Paths relative to daemon/src/main.rs → daemon/../../assets/
 pub const TOR_BINARY_DATA: &[u8] = include_bytes!("../../assets/tor-bin");
 pub const GEOIP_DATA:      &[u8] = include_bytes!("../../assets/geoip");
 pub const GEOIP6_DATA:     &[u8] = include_bytes!("../../assets/geoip6");
 
-// آدرس پیش‌فرض API — روی تمام interface‌ها
+// Default API Bind — on all interfaces
 const DEFAULT_API_BIND: &str = "0.0.0.0:9090";
 
 fn setup_auto_symlink() {
@@ -35,7 +34,7 @@ fn setup_auto_symlink() {
     }
 }
 
-/// مسیر دیتابیس را کنار باینری می‌سازد (tor_db.sqlite)
+/// Creates db path next to binary (tor_db.sqlite)
 fn db_path_next_to_exe() -> String {
     env::current_exe()
         .ok()
@@ -46,14 +45,14 @@ fn db_path_next_to_exe() -> String {
 }
 
 fn print_usage(name: &str) {
-    println!("\x1b[1m\x1b[36mTor Router\x1b[0m");
+    println!("\x1b[1m\x1b[36mToRouter\x1b[0m");
     println!();
-    println!("  \x1b[36m{} --run\x1b[0m                     اجرای daemon بدون وب پنل", name);
-    println!("  \x1b[36m{} --web-dir <path>\x1b[0m          اجرای daemon با وب پنل", name);
-    println!("  \x1b[36m{}\x1b[0m (بدون آرگومان)           اجرای CLI", name);
+    println!("  \x1b[36m{} --run\x1b[0m                     Run daemon without web panel", name);
+    println!("  \x1b[36m{} --web-dir <path>\x1b[0m          Run daemon with web panel", name);
+    println!("  \x1b[36m{}\x1b[0m (no arguments)           Run CLI", name);
     println!();
-    println!("دیتابیس به‌صورت خودکار کنار باینری ساخته می‌شود: tor_db.sqlite");
-    println!("API روی {}  بالا می‌آید.", DEFAULT_API_BIND);
+    println!("Database will be created next to binary: tor_db.sqlite");
+    println!("API starts on {}", DEFAULT_API_BIND);
 }
 
 #[tokio::main]
@@ -74,7 +73,7 @@ async fn main() {
     // when the daemon is started with --web-dir. This makes UI+API share one bind.
     let api_bind = format!("{}:{}", settings.web_bind_address, settings.web_panel_port);
 
-    // بدون آرگومان → CLI
+    // No arguments → CLI
     if args.len() == 1 {
         run_cli(&api_bind).await;
         return;
@@ -98,7 +97,7 @@ async fn main() {
                 return;
             }
             unknown => {
-                eprintln!("\x1b[31m⚠️  آرگومان ناشناخته: {}\x1b[0m", unknown);
+                eprintln!("\x1b[31m⚠️  Unknown argument: {}\x1b[0m", unknown);
                 print_usage(&args[0]);
                 std::process::exit(1);
             }
@@ -128,13 +127,16 @@ async fn main() {
             .add_directive("hyper=info".parse().unwrap())
             .add_directive("reqwest=info".parse().unwrap());
             
+        let logger = crate::daemon::AppLogger::new();
+
         tracing_subscriber::fmt()
             .with_env_filter(filter)
+            .with_writer(logger)
             .init();
             
         run_daemon(&db_path, &api_bind, web_dir).await;
     } else {
-        // هیچ flag معتبری داده نشده → CLI
+        // No valid flags given → CLI
         run_cli(&api_bind).await;
     }
 }

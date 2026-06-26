@@ -42,7 +42,7 @@ pub async fn start_web_server(
     let state = AppState {
         restart_tx,
         nodes,
-        db_path,
+        db_path: db_path.clone(),
         sessions: Arc::new(RwLock::new(HashSet::new())),
     };
 
@@ -52,12 +52,13 @@ pub async fn start_web_server(
     let api = Router::new()
         .route("/api/login",               post(login))
         .route("/api/routes",              get(list_routes).post(create_route_handler))
-        .route("/api/routes/:id/probe",    get(probe_route_handler))
+        .route("/api/routes/{id}/probe",    get(probe_route_handler))
         .route("/api/routes/restart-all",  post(restart_all_handler))
-        .route("/api/routes/:id/restart",  post(restart_by_id_handler))
-        .route("/api/routes/:id",          put(update_route_handler).delete(delete_route_handler))
+        .route("/api/routes/{id}/restart",  post(restart_by_id_handler))
+        .route("/api/routes/{id}",          put(update_route_handler).delete(delete_route_handler))
         .route("/api/settings",            get(get_settings_handler).put(save_settings_handler))
         .route("/api/countries",           get(get_countries))
+        .route("/api/logs",                get(get_logs))
         // Legacy CLI endpoint – keep backward-compat
         .route("/restart",                 post(legacy_restart))
         .route("/status",                  get(legacy_status))
@@ -79,15 +80,70 @@ pub async fn start_web_server(
         })
     };
 
+    let settings = config::load_settings(&db_path).unwrap_or_default();
+
     let addr: std::net::SocketAddr = match bind_addr.parse() {
         Ok(a) => a,
         Err(e) => { error!("❌ Invalid bind address {}: {}", bind_addr, e); return; }
     };
 
+    if let Some(domain) = settings.domain {
+        if !domain.trim().is_empty() {
+            info!("🔒 Starting web server with Auto-SSL for domain {} on https://{}", domain, addr);
+            
+            let acme_state = rustls_acme::AcmeConfig::new(vec![domain.trim().to_string()])
+                .cache(rustls_acme::caches::DirCache::new("./acme_cache"))
+                .directory_lets_encrypt(true);
+            
+            let mut state = acme_state.state();
+            let rustls_config = state.default_rustls_config();
+            let acceptor_443 = state.axum_acceptor(rustls_config.clone());
+            let acceptor_panel = state.axum_acceptor(rustls_config);
+            
+            tokio::spawn(async move {
+                use tokio_stream::StreamExt;
+                loop {
+                    if let Some(event) = state.next().await {
+                        match event {
+                            Ok(ok) => tracing::info!("acme event: {:?}", ok),
+                            Err(err) => tracing::error!("acme error: {:?}", err),
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            });
+
+            // Spawn ACME Challenge server on port 443
+            let mut addr_443 = addr;
+            addr_443.set_port(443);
+            tokio::spawn(async move {
+                tracing::info!("🔒 ACME TLS-ALPN-01 listening on {}", addr_443);
+                let empty_app = axum::Router::new().route("/", axum::routing::get(|| async { "ACME Challenge Server" }));
+                if let Err(e) = axum_server::bind(addr_443)
+                    .acceptor(acceptor_443)
+                    .serve(empty_app.into_make_service())
+                    .await
+                {
+                    tracing::error!("❌ ACME port 443 error: {}", e);
+                }
+            });
+
+            if let Err(e) = axum_server::bind(addr)
+                .acceptor(acceptor_panel)
+                .serve(app.into_make_service())
+                .await
+            {
+                error!("❌ Web server SSL error: {}", e);
+            }
+            return;
+        }
+    }
+
     if web_dir.is_some() {
         info!("🌐 Web panel listening on http://{}", addr);
     }
-    if let Err(e) = axum::Server::bind(&addr).serve(app.into_make_service()).await {
+    if let Err(e) = axum_server::bind(addr).serve(app.into_make_service()).await {
         error!("❌ Web server error: {}", e);
     }
 }
@@ -381,6 +437,7 @@ async fn get_settings_handler(
             "web_panel_port":   s.web_panel_port,
             "web_bind_address": s.web_bind_address,
             "api_port":         s.api_port,
+            "domain":           s.domain,
         })).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     }
@@ -398,6 +455,7 @@ async fn save_settings_handler(
     if let Some(p) = update.api_port         { settings.api_port         = p; }
     if let Some(u) = update.admin_username   { settings.admin_username   = u; }
     if let Some(pw) = update.admin_password  { settings.admin_password   = pw; }
+    settings.domain     = update.domain;
     match config::save_settings(&state.db_path, &settings) {
         Ok(_) => {
             // Signal run_daemon to only restart the web server (do not stop Tor routes)
@@ -527,4 +585,14 @@ async fn get_countries(
     }
     
     (StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch countries").into_response()
+}
+
+async fn get_logs(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    if let Err(e) = require_auth(&state, &headers) { return e.into_response(); }
+    
+    let logs = crate::daemon::APP_LOGS.read().clone();
+    (StatusCode::OK, Json(serde_json::json!({ "logs": logs }))).into_response()
 }

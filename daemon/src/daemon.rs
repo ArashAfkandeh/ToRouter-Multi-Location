@@ -17,6 +17,48 @@ pub const NOT_CONNECTED: Duration = Duration::from_secs(3596400);
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 pub const WEB_RESTART_SIGNAL: i64 = -1;
 
+lazy_static::lazy_static! {
+    pub static ref APP_LOGS: Arc<RwLock<Vec<String>>> = Arc::new(RwLock::new(Vec::new()));
+}
+
+#[derive(Clone)]
+pub struct AppLogger;
+
+impl AppLogger {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl std::io::Write for AppLogger {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let text = String::from_utf8_lossy(buf).to_string();
+        // Also write to stdout
+        let mut stdout = std::io::stdout();
+        stdout.write_all(buf)?;
+        stdout.flush()?;
+
+        let mut logs = APP_LOGS.write();
+        if logs.len() > 1000 {
+            logs.remove(0);
+        }
+        logs.push(text);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        std::io::stdout().flush()
+    }
+}
+
+impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for AppLogger {
+    type Writer = Self;
+
+    fn make_writer(&'a self) -> Self::Writer {
+        self.clone()
+    }
+}
+
 pub struct ActiveNode {
     pub latency: Arc<RwLock<Duration>>,
     pub tor_ip: Arc<RwLock<Option<String>>>,

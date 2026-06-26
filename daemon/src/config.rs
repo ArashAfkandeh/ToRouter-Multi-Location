@@ -50,6 +50,7 @@ pub struct Settings {
     pub api_port:         u16,
     pub admin_username:   String,
     pub admin_password:   String,
+    pub domain:           Option<String>,
 }
 
 impl Default for Settings {
@@ -60,6 +61,7 @@ impl Default for Settings {
             api_port:         9090,
             admin_username:   "admin".to_string(),
             admin_password:   "admin".to_string(),
+            domain:           None,
         }
     }
 }
@@ -71,6 +73,7 @@ pub struct SettingsUpdate {
     pub api_port:         Option<u16>,
     pub admin_username:   Option<String>,
     pub admin_password:   Option<String>,
+    pub domain:           Option<String>,
 }
 
 // ─── Bootstrap schema ────────────────────────────────────────────────────────
@@ -258,6 +261,7 @@ pub fn load_settings(db_path: &str) -> Result<Settings> {
             "api_port"         => settings.api_port         = row.1.parse().unwrap_or(9090),
             "admin_username"   => settings.admin_username   = row.1,
             "admin_password"   => settings.admin_password   = row.1,
+            "domain"           => settings.domain           = if row.1.is_empty() { None } else { Some(row.1) },
             _ => {}
         }
     }
@@ -272,6 +276,7 @@ pub fn save_settings(db_path: &str, s: &Settings) -> Result<()> {
         ("api_port",         s.api_port.to_string()),
         ("admin_username",   s.admin_username.clone()),
         ("admin_password",   s.admin_password.clone()),
+        ("domain",           s.domain.clone().unwrap_or_default()),
     ];
     for (k, v) in pairs {
         conn.execute(

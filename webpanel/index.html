@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tor Router Panel</title>
+    <title>ToRouter Panel</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%237d4698'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z'/%3E%3C/svg%3E">
     <!-- Fallback to CDN for runtime Tailwind if build isn't present, to ensure it works beautifully -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -55,7 +55,7 @@
                         </svg>
                     </div>
                     
-                    <h2 data-i18n="login_title" class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Tor Router Control</h2>
+                    <h2 data-i18n="login_title" class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">ToRouter Control</h2>
                     <p data-i18n="login_desc" class="text-slate-500 dark:text-slate-400 mt-2">Sign in to manage your private nodes.</p>
                 </div>
                 <div class="relative p-8 pt-0">
@@ -88,7 +88,7 @@
                         </svg>
                     </div>
                     <div class="min-w-0">
-                        <h1 data-i18n="nav_title" class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">Tor Router</h1>
+                        <h1 data-i18n="nav_title" class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">ToRouter</h1>
                         <p class="hidden sm:block text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">Support developer on Telegram and GitHub</p>
                     </div>
                 </div>
@@ -126,29 +126,29 @@
 
             <main class="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
                 <!-- Action Bar -->
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                     <div>
-                        <h2 data-i18n="dash_title" class="text-2xl font-bold text-slate-900 dark:text-white">Exit Nodes</h2>
-                        <p data-i18n="dash_desc" class="text-slate-500 dark:text-slate-400 mt-1">Manage and monitor active Tor routing nodes.</p>
+                        <h2 data-i18n="dash_title" class="text-xl font-bold text-slate-900 dark:text-white">Exit Nodes</h2>
+                        <p data-i18n="dash_desc" class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Manage and monitor active Tor routing nodes.</p>
                     </div>
-                    <div class="flex flex-wrap gap-2 sm:gap-3">
-                        <a href="Countries.html" target="_blank" class="px-4 py-2 sm:px-5 sm:py-2.5 bg-teal-600 hover:bg-teal-500 text-white text-xs sm:text-sm font-medium rounded-lg shadow-md transition-all focus:ring-2 focus:ring-teal-500 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            <span data-i18n="btn_countries">Tor Countries</span>
+                    <div class="flex flex-nowrap overflow-x-auto no-scrollbar gap-2 w-full sm:w-auto pb-1 sm:pb-0">
+                        <a href="Countries.html" target="_blank" class="shrink-0 px-3 py-2 sm:px-4 sm:py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs sm:text-sm font-medium rounded-lg shadow-sm transition-all focus:ring-2 focus:ring-teal-500 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <span data-i18n="btn_countries" class="whitespace-nowrap">Tor Countries</span>
                         </a>
-                        <button id="btn-restart-all" class="px-4 py-2 sm:px-5 sm:py-2.5 bg-slate-600 hover:bg-slate-700 text-white text-xs sm:text-sm font-medium rounded-lg shadow-sm transition-all focus:ring-2 focus:ring-slate-500 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                            <span data-i18n="btn_restart_all">Restart All</span>
+                        <button id="btn-create-route" class="shrink-0 px-3 py-2 sm:px-4 sm:py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs sm:text-sm font-medium rounded-lg shadow-sm transition-all focus:ring-2 focus:ring-brand-500 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span data-i18n="btn_add_node" class="whitespace-nowrap">Add Node</span>
                         </button>
-                        <button id="btn-create-route" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg shadow-md transition-all focus:ring-2 focus:ring-brand-500 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                            <span data-i18n="btn_add_node">Add Node</span>
+                        <button id="btn-view-logs" class="shrink-0 px-3 py-2 sm:px-4 sm:py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs sm:text-sm font-medium rounded-lg shadow-sm transition-all focus:ring-2 focus:ring-slate-500 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                            <span data-i18n="btn_view_logs" class="whitespace-nowrap">Logs</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- Metrics Overview -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="metrics-container">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" id="metrics-container">
                     <!-- Populated via JS -->
                 </div>
 
@@ -222,17 +222,18 @@
 
         <!-- Settings Modal -->
         <div id="modal-settings" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
-            <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300">
+            <div class="bg-white dark:bg-slate-800 w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300">
                 <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
-                    <h3 data-i18n="modal_set_title" class="text-lg font-semibold text-slate-900 dark:text-white">Daemon Settings</h3>
+                    <h3 data-i18n="modal_set_title" class="text-lg font-semibold text-slate-900 dark:text-white">Settings</h3>
                     <button class="modal-close-settings p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-full transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
                 <div class="p-6">
-                    <form id="form-settings" class="space-y-5">
-                        <h4 data-i18n="modal_set_net" class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Network</h4>
-                        <div class="grid grid-cols-2 gap-4">
+                    <form id="form-settings" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Network Section -->
+                        <div class="space-y-4">
+                            <h4 data-i18n="modal_set_net" class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Network</h4>
                             <div>
                                 <label data-i18n="modal_set_web_bind" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Web Panel Bind</label>
                                 <input type="text" id="set-web-bind" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-brand-500">
@@ -243,21 +244,37 @@
                             </div>
                         </div>
 
-                        <h4 data-i18n="modal_set_auth" class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-6 mb-2">Admin Credentials</h4>
-                        <div>
-                            <label data-i18n="modal_set_user" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Admin Username</label>
-                            <input type="text" id="set-admin-user" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-brand-500">
-                        </div>
-                        <div>
-                            <label data-i18n="modal_set_pass" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">New Admin Password</label>
-                            <input type="password" id="set-admin-pass" placeholder="(Leave empty to keep)" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-brand-500">
+                        <!-- Admin Credentials Section -->
+                        <div class="space-y-4">
+                            <h4 data-i18n="modal_set_auth" class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Admin Credentials</h4>
+                            <div>
+                                <label data-i18n="modal_set_user" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Admin Username</label>
+                                <input type="text" id="set-admin-user" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-brand-500">
+                            </div>
+                            <div>
+                                <label data-i18n="modal_set_pass" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">New Admin Password</label>
+                                <input type="password" id="set-admin-pass" placeholder="(Leave empty to keep)" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-brand-500">
+                            </div>
                         </div>
 
-                        <div id="settings-msg" class="hidden text-sm font-medium mt-2"></div>
+                        <!-- Auto-SSL Section -->
+                        <div class="space-y-4">
+                            <h4 data-i18n="modal_set_ssl" class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Auto-SSL (Let's Encrypt)</h4>
+                            <div>
+                                <label data-i18n="modal_set_domain" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Domain / Subdomain</label>
+                                <input type="text" id="set-domain" placeholder="e.g. panel.example.com (empty to disable)" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-brand-500">
+                            </div>
+                            <div>
+                                <p data-i18n="modal_set_ssl_help" class="text-xs text-slate-500 mt-1">If domain is set, panel will automatically fetch and renew SSL certs using ALPN-01 on port 443. The panel itself stays on its configured port.</p>
+                            </div>
+                        </div>
 
-                        <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700/50">
-                            <button data-i18n="modal_btn_cancel" type="button" class="modal-close-settings px-5 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">Cancel</button>
-                            <button data-i18n="modal_set_btn_save" type="submit" class="px-5 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-500 rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-brand-500 outline-none">Update Settings</button>
+                        <div class="col-span-1 md:col-span-3">
+                            <div id="settings-msg" class="hidden text-sm font-medium mt-2"></div>
+                            <div class="mt-4 flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700/50">
+                                <button data-i18n="modal_btn_cancel" type="button" class="modal-close-settings px-5 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">Cancel</button>
+                                <button data-i18n="modal_set_btn_save" type="submit" class="px-5 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-500 rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-brand-500 outline-none">Update Settings</button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -279,6 +296,36 @@
                         <button type="button" data-i18n="modal_btn_cancel" class="modal-close-delete px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors border border-slate-300 dark:border-slate-600">Cancel</button>
                         <button type="button" id="modal-delete-btn-confirm" data-i18n="modal_del_btn_confirm" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-red-500 outline-none">Delete</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Modal -->
+        <div id="modal-logs" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
+            <div class="bg-white dark:bg-slate-800 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col relative">
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
+                    <h3 data-i18n="modal_logs_title" class="text-xl font-bold text-slate-900 dark:text-white">Application Logs</h3>
+                    <div class="flex items-center gap-2">
+                        <select id="log-level-filter" class="text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1.5 outline-none text-slate-700 dark:text-slate-300">
+                            <option value="all" data-i18n="log_level_all">All Levels</option>
+                            <option value="info" data-i18n="log_level_info">INFO</option>
+                            <option value="warn" data-i18n="log_level_warn">WARN</option>
+                            <option value="error" data-i18n="log_level_error">ERROR</option>
+                            <option value="debug" data-i18n="log_level_debug">DEBUG</option>
+                        </select>
+                        <button id="btn-copy-logs" type="button" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:text-slate-300 dark:hover:bg-slate-700/50 rounded-lg transition-colors" title="Copy Logs">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                        </button>
+                        <button id="btn-refresh-logs" type="button" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:text-slate-300 dark:hover:bg-slate-700/50 rounded-lg transition-colors" title="Refresh Logs">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        </button>
+                        <button id="modal-close-logs" type="button" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:text-slate-300 dark:hover:bg-slate-700/50 rounded-lg transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 bg-slate-950 no-scrollbar">
+                    <pre id="logs-container" class="font-mono text-xs sm:text-sm text-emerald-400 whitespace-pre-wrap break-all">Loading logs...</pre>
                 </div>
             </div>
         </div>

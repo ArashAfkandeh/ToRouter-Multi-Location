@@ -3,12 +3,12 @@ const API_BASE = '/api';
 // --- i18n ---
 const translations = {
     en: {
-        login_title: "Tor Router Control",
+        login_title: "ToRouter Control",
         login_desc: "Sign in to manage your private nodes.",
         login_user: "Username",
         login_pass: "Password",
         login_btn: "Sign In",
-        nav_title: "Tor Router",
+        nav_title: "ToRouter",
         nav_logout: "Logout",
         dash_title: "Exit Nodes",
         dash_desc: "Manage and monitor active Tor routing nodes.",
@@ -39,6 +39,10 @@ const translations = {
         modal_set_user: "Admin Username",
         modal_set_pass: "New Admin Password",
         modal_set_btn_save: "Update Settings",
+        modal_set_ssl: "Auto-SSL (Let's Encrypt)",
+        modal_set_domain: "Domain / Subdomain",
+        modal_set_email: "ACME Email (Optional)",
+        modal_set_ssl_help: "If domain is set, panel will automatically fetch and renew SSL certs. Panel MUST be accessible via port 443 externally.",
         nodes_empty_title: "No nodes configured",
         nodes_empty_desc: "Create a new routing node to get started.",
         metric_healthy: "Healthy",
@@ -50,7 +54,15 @@ const translations = {
         card_auth: "Auth req",
         card_yes: "Yes",
         card_no: "No",
-        card_restart: "Restart"
+        card_restart: "Restart",
+        btn_view_logs: "Logs",
+        modal_logs_title: "Application Logs",
+        log_level_all: "All Levels",
+        log_level_info: "INFO",
+        log_level_warn: "WARN",
+        log_level_error: "ERROR",
+        log_level_debug: "DEBUG",
+        copied_to_clipboard: "Logs copied to clipboard"
     },
     fa: {
         login_title: "کنترل پنل تور روتر",
@@ -89,6 +101,10 @@ const translations = {
         modal_set_user: "نام کاربری مدیر",
         modal_set_pass: "رمز عبور جدید مدیر",
         modal_set_btn_save: "بروزرسانی تنظیمات",
+        modal_set_ssl: "دریافت خودکار SSL",
+        modal_set_domain: "دامنه / ساب‌دامنه",
+        modal_set_email: "ایمیل (اختیاری)",
+        modal_set_ssl_help: "در صورت تنظیم دامنه، پنل به صورت خودکار گواهینامه SSL را دریافت و تمدید می‌کند. توجه کنید که برای این کار پورت پنل باید روی 443 از بیرون در دسترس باشد.",
         nodes_empty_title: "هیچ نودی تنظیم نشده است",
         nodes_empty_desc: "برای شروع یک نود جدید ایجاد کنید.",
         metric_healthy: "سالم",
@@ -100,7 +116,15 @@ const translations = {
         card_auth: "نیاز به احراز",
         card_yes: "بله",
         card_no: "خیر",
-        card_restart: "راه‌اندازی مجدد"
+        card_restart: "راه‌اندازی مجدد",
+        btn_view_logs: "لاگ‌ها",
+        modal_logs_title: "لاگ‌های سیستم",
+        log_level_all: "همه سطوح",
+        log_level_info: "اطلاعات (INFO)",
+        log_level_warn: "هشدار (WARN)",
+        log_level_error: "خطا (ERROR)",
+        log_level_debug: "دیباگ (DEBUG)",
+        copied_to_clipboard: "لاگ‌ها در حافظه کپی شدند"
     }
 };
 
@@ -132,7 +156,6 @@ const el = {
     metricsContainer: document.getElementById('metrics-container'),
     btnRefresh: document.getElementById('btn-refresh'),
     btnLogout: document.getElementById('btn-logout'),
-    btnRestartAll: document.getElementById('btn-restart-all'),
     btnCreateRoute: document.getElementById('btn-create-route'),
     btnSettings: document.getElementById('btn-settings'),
     btnTheme: document.getElementById('btn-theme'),
@@ -171,10 +194,20 @@ const el = {
         webBind: document.getElementById('set-web-bind'),
         webPort: document.getElementById('set-web-port'),
         adminUser: document.getElementById('set-admin-user'),
-        adminPass: document.getElementById('set-admin-pass')
+        adminPass: document.getElementById('set-admin-pass'),
+        domain: document.getElementById('set-domain')
     },
     modalSettingsCloses: document.querySelectorAll('.modal-close-settings'),
     
+    // Logs Modal
+    modalLogs: document.getElementById('modal-logs'),
+    btnCloseLogs: document.getElementById('modal-close-logs'),
+    btnRefreshLogs: document.getElementById('btn-refresh-logs'),
+    btnViewLogs: document.getElementById('btn-view-logs'),
+    btnCopyLogs: document.getElementById('btn-copy-logs'),
+    logLevelFilter: document.getElementById('log-level-filter'),
+    logsContainer: document.getElementById('logs-container'),
+
     toastContainer: document.getElementById('toast-container')
 };
 
@@ -194,7 +227,6 @@ document.addEventListener('DOMContentLoaded', () => {
     el.formLogin.addEventListener('submit', handleLogin);
     el.btnLogout.addEventListener('click', handleLogout);
     el.btnRefresh.addEventListener('click', fetchRoutes);
-    el.btnRestartAll.addEventListener('click', handleRestartAll);
     el.btnTheme.addEventListener('click', toggleTheme);
     el.btnLang.addEventListener('click', toggleLang);
     el.btnThemeLogin?.addEventListener('click', toggleTheme);
@@ -213,6 +245,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // Delete Modal
     el.closeDeleteBtns.forEach(btn => btn.addEventListener('click', closeDeleteModal));
     el.btnConfirmDelete.addEventListener('click', confirmDeleteRoute);
+
+    // Logs Modal
+    if (el.btnViewLogs) el.btnViewLogs.addEventListener('click', openLogsModal);
+    if (el.btnCloseLogs) el.btnCloseLogs.addEventListener('click', closeLogsModal);
+    if (el.btnRefreshLogs) el.btnRefreshLogs.addEventListener('click', fetchLogs);
+    if (el.btnCopyLogs) {
+        el.btnCopyLogs.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(el.logsContainer.textContent);
+                showToast(t('copied_to_clipboard') || 'Logs copied to clipboard', 'success');
+            } catch (err) {
+                showToast('Failed to copy logs', 'error');
+            }
+        });
+    }
+    if (el.logLevelFilter) {
+        el.logLevelFilter.addEventListener('change', () => {
+            renderFilteredLogs();
+        });
+    }
 
     // Visibility
     document.addEventListener('visibilitychange', () => {
@@ -478,31 +530,31 @@ function renderMetrics(data) {
     }
 
     el.metricsContainer.innerHTML = `
-        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+        <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
             <div>
-                <p class="text-xs font-medium uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">${t_total}</p>
-                <h3 class="text-2xl font-semibold text-slate-900 dark:text-white mt-1">${total}</h3>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">${t_total}</p>
+                <h3 class="text-xl font-semibold text-slate-900 dark:text-white mt-0.5">${total}</h3>
             </div>
-            <div class="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            <div class="w-8 h-8 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
             </div>
         </div>
-        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+        <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
             <div>
-                <p class="text-xs font-medium uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">${t('metric_healthy')}</p>
-                <h3 class="text-2xl font-semibold text-emerald-600 dark:text-emerald-500 mt-1">${healthy}</h3>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">${t('metric_healthy')}</p>
+                <h3 class="text-xl font-semibold text-emerald-600 dark:text-emerald-500 mt-0.5">${healthy}</h3>
             </div>
-            <div class="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div class="w-8 h-8 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
         </div>
-        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+        <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
             <div>
-                <p class="text-xs font-medium uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">${t('metric_error')}</p>
-                <h3 class="text-2xl font-semibold text-red-600 dark:text-red-500 mt-1">${error}</h3>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">${t('metric_error')}</p>
+                <h3 class="text-xl font-semibold text-red-600 dark:text-red-500 mt-0.5">${error}</h3>
             </div>
-            <div class="w-10 h-10 bg-red-50 dark:bg-red-900/30 rounded-xl flex items-center justify-center text-red-600 dark:text-red-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div class="w-8 h-8 bg-red-50 dark:bg-red-900/30 rounded-lg flex items-center justify-center text-red-600 dark:text-red-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </div>
         </div>
     `;
@@ -587,7 +639,7 @@ function createNodeCard(node) {
                     </div>
                     <div class="flex justify-between items-center py-1">
                         <span class="text-slate-500 dark:text-slate-400 font-medium">${t('card_auth')}</span>
-                        <span data-el="auth-req" class="font-mono text-slate-900 dark:text-white">${(node.username && node.password) ? '<span class="auth-emoji locked">🔒</span>' : '<span class="auth-emoji unlocked">🔓</span>'}</span>
+                        <span data-el="auth-req" class="font-mono text-slate-900 dark:text-white">${(node.username && node.password) ? '<span class="auth-emoji locked">🔒</span>' : '<span class="auth-emoji unlocked">🔓&#xFE0E;</span>'}</span>
                     </div>
                 </div>
             </div>
@@ -678,7 +730,7 @@ function updateNodeCard(node) {
 
     const authEl = card.querySelector('[data-el="auth-req"]');
     if (authEl) {
-        const authHtml = (node.username && node.password) ? '<span class="auth-emoji locked">🔒</span>' : '<span class="auth-emoji unlocked">🔓</span>';
+        const authHtml = (node.username && node.password) ? '<span class="auth-emoji locked">🔒</span>' : '<span class="auth-emoji unlocked">🔓&#xFE0E;</span>';
         if (authEl.innerHTML !== authHtml) authEl.innerHTML = authHtml;
     }
 }
@@ -706,14 +758,6 @@ async function handleRestart(id, name) {
         showToast(`${name} restarted.`, 'success');
         fetchRoutes(); // rapid refresh
     }
-}
-
-async function handleRestartAll() {
-    if(!confirm("Are you sure you want to restart all nodes? Connections will drop temporarily.")) return;
-    showToast("Restarting all nodes...", 'info');
-    const res = await apiCall('/routes/restart-all', { method: 'POST' });
-    if (res.error) showToast(`Error: ${res.error}`, 'error');
-    else showToast(`Restart command sent to ${res.data.restarted} nodes.`, 'success');
 }
 
 async function handleDelete(id, name) {
@@ -785,6 +829,8 @@ function openRouteModal(id = null) {
                 el.routeInputs.country.value = node.country_code;
                 el.routeInputs.interval.value = node.test_interval_minutes || 10;
                 el.routeInputs.swap.value = node.swap_interval_hours || 24;
+                el.routeInputs.user.value = node.username || '';
+                el.routeInputs.pass.value = node.password || '';
             }
         }
     
@@ -858,6 +904,7 @@ async function openSettingsModal() {
     el.settingsInputs.webPort.value = data.web_panel_port || '';
     el.settingsInputs.adminUser.value = '';
     el.settingsInputs.adminPass.value = '';
+    el.settingsInputs.domain.value = data.domain || '';
 
     el.modalSettings.classList.remove('hidden');
     el.modalSettings.classList.add('flex');
@@ -888,6 +935,8 @@ async function handleSettingsSave(e) {
     }
     if (el.settingsInputs.adminUser.value) payload.admin_username = el.settingsInputs.adminUser.value;
     if (el.settingsInputs.adminPass.value) payload.admin_password = el.settingsInputs.adminPass.value;
+    
+    payload.domain = el.settingsInputs.domain.value.trim() || null;
 
     const res = await apiCall('/settings', {
         method: 'PUT',
@@ -960,4 +1009,54 @@ function showToast(message, type = 'info') {
         toast.classList.add('opacity-0', 'translate-x-full');
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+}
+
+// --- Logs Modal ---
+
+function openLogsModal() {
+    el.modalLogs.classList.remove('hidden');
+    el.modalLogs.classList.add('flex');
+    setTimeout(() => {
+        el.modalLogs.classList.remove('opacity-0');
+        el.modalLogs.querySelector('div').classList.remove('scale-95');
+    }, 10);
+    fetchLogs();
+}
+
+function closeLogsModal() {
+    el.modalLogs.classList.add('opacity-0');
+    el.modalLogs.querySelector('div').classList.add('scale-95');
+    setTimeout(() => {
+        el.modalLogs.classList.remove('flex');
+        el.modalLogs.classList.add('hidden');
+    }, 300);
+}
+
+let allLogsData = [];
+
+function renderFilteredLogs() {
+    if (!allLogsData || allLogsData.length === 0) {
+        el.logsContainer.textContent = "No logs available.";
+        return;
+    }
+    const filter = el.logLevelFilter ? el.logLevelFilter.value.toLowerCase() : 'all';
+    
+    if (filter === 'all') {
+        el.logsContainer.textContent = allLogsData.join("");
+    } else {
+        const filtered = allLogsData.filter(line => line.toLowerCase().includes(`[${filter}]`));
+        el.logsContainer.textContent = filtered.length > 0 ? filtered.join("") : "No logs matching filter.";
+    }
+    el.logsContainer.parentElement.scrollTop = el.logsContainer.parentElement.scrollHeight;
+}
+
+async function fetchLogs() {
+    el.logsContainer.textContent = "Loading logs...";
+    const res = await apiCall('/logs');
+    if (res.error) {
+        el.logsContainer.textContent = "Error fetching logs: " + res.error;
+    } else {
+        allLogsData = res.data.logs || [];
+        renderFilteredLogs();
+    }
 }
