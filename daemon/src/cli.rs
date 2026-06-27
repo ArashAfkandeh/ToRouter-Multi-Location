@@ -40,11 +40,63 @@ struct RouteApiItem {
     last_checked_at: Option<String>,
 }
 
+async fn auto_login(api_url: &str) -> Option<String> {
+    let exe_path = std::env::current_exe().unwrap_or_default();
+    let dir = exe_path.parent().unwrap_or(std::path::Path::new("."));
+    let db_path = dir.join("tor_db.sqlite");
+    
+    if let Ok(settings) = crate::config::load_settings(db_path.to_str().unwrap_or("tor_db.sqlite")) {
+        let payload = serde_json::json!({
+            "username": settings.admin_username,
+            "password": settings.admin_password
+        });
+        
+        let client = reqwest::Client::builder().timeout(Duration::from_secs(3)).build().unwrap();
+        if let Ok(res) = client.post(&format!("{}/api/login", api_url)).json(&payload).send().await {
+            if res.status().is_success() {
+                if let Some(cookie) = res.headers().get(reqwest::header::SET_COOKIE) {
+                    if let Ok(c) = cookie.to_str() {
+                        if let Some(s) = c.split(';').find(|p| p.trim().starts_with("session=")) {
+                            return Some(s.trim().to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 pub async fn run_cli(api_url_base: &str) {
-    let api_url = api_url_base.trim_end_matches('/').to_string();
-    let session_cookie: Option<String> = None;
+    let mut api_url = api_url_base.trim_end_matches('/').to_string();
+    let mut session_cookie: Option<String> = None;
 
     loop {
+        // Refresh api_url from DB in case it was changed
+        let exe_path = std::env::current_exe().unwrap_or_default();
+        let dir = exe_path.parent().unwrap_or(std::path::Path::new("."));
+        let db_path = dir.join("tor_db.sqlite");
+        if let Ok(settings) = crate::config::load_settings(db_path.to_str().unwrap_or("tor_db.sqlite")) {
+            let has_domain = !settings.domain.as_deref().unwrap_or("").trim().is_empty();
+            let scheme = if settings.use_custom_cert || has_domain { "https" } else { "http" };
+            let mut connect_addr = settings.web_bind_address.clone();
+            if connect_addr == "0.0.0.0" {
+                connect_addr = "127.0.0.1".to_string();
+            }
+            if has_domain {
+                connect_addr = settings.domain.clone().unwrap();
+            }
+            let mut base_path = settings.web_base_path.trim().trim_end_matches('/').to_string();
+            if !base_path.is_empty() && !base_path.starts_with('/') {
+                base_path = format!("/{}", base_path);
+            }
+            api_url = format!("{}://{}:{}{}", scheme, connect_addr, settings.web_panel_port, base_path);
+        }
+
+        if session_cookie.is_none() {
+            session_cookie = auto_login(&api_url).await;
+        }
+
         clear_screen();
         println!("\x1b[1m\x1b[36m╔════════════════════════════════════════════════════════╗\x1b[0m");
         println!("\x1b[1m\x1b[36m║               🚀 TOR ROUTER CLI                        ║\x1b[0m");
@@ -98,6 +150,7 @@ pub async fn run_cli(api_url_base: &str) {
             }
             "8" => {
                 update_admin_credentials(&api_url, session_cookie.as_deref()).await;
+                session_cookie = None;
                 pause();
             }
             "9" => {
@@ -518,7 +571,9 @@ async fn delete_route_cli(api_url: &str, session: Option<&str>) {
 async fn update_admin_credentials(api_url: &str, session: Option<&str>) {
     print!("New admin username (leave blank to skip): "); io::stdout().flush().unwrap(); let mut user = String::new(); io::stdin().read_line(&mut user).unwrap(); let user = user.trim().to_string();
     print!("New admin password (leave blank to skip): "); io::stdout().flush().unwrap(); let mut pass = String::new(); io::stdin().read_line(&mut pass).unwrap(); let pass = pass.trim().to_string();
-    print!("New Web Base Path (leave blank to skip, '-' to clear): "); io::stdout().flush().unwrap(); let mut base = String::new(); io::stdin().read_line(&mut base).unwrap(); let base = base.trim().to_string();
+    print!("New Web Base Path (leave blank to skip, '-' to clear): "); io::stdout().flush().unwrap(); let mut base = String::new(); io::stdin().read_line(&mut base).unwrap(); 
+    let base = base.trim();
+    let base = base.trim_matches(|c| c == '\'' || c == '"').trim().to_string();
     if user.is_empty() && pass.is_empty() && base.is_empty() { println!("Nothing to do"); return; }
     let mut payload = serde_json::Map::new();
     if !user.is_empty() { payload.insert("admin_username".to_string(), serde_json::Value::String(user)); }

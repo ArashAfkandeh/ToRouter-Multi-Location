@@ -5,11 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Country Flags - Tor Exit Nodes | پرچم‌های کشورها</title>
     <script>
-        if (!window.location.pathname.endsWith('.html') && !window.location.pathname.endsWith('.htm') && !window.location.pathname.endsWith('/')) {
-            const base = document.createElement('base');
-            base.href = window.location.pathname + '/';
-            document.head.appendChild(base);
+        let bp = window.location.pathname;
+        if (!bp.endsWith('.html') && !bp.endsWith('.htm') && !bp.endsWith('/')) {
+            bp += '/';
+        } else if (bp.endsWith('.html') || bp.endsWith('.htm')) {
+            bp = bp.substring(0, bp.lastIndexOf('/') + 1);
         }
+        const base = document.createElement('base');
+        base.href = bp;
+        document.head.appendChild(base);
     </script>
     <style>
         /* ===== متغیرهای تم ===== */
