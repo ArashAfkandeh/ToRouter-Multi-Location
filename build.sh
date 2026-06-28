@@ -57,6 +57,12 @@ CLEAN_FIRST=false
 TARGET=""
 VERBOSE=false
 
+# ─── Setup Sudo ──────────────────────────────────────────────────────────────
+SUDO=""
+if [ "$EUID" -ne 0 ] && command -v sudo &>/dev/null; then
+    SUDO="sudo"
+fi
+
 # ─── Utilities ───────────────────────────────────────────────────────────────
 log_info()    { echo -e "${CYAN}[INFO]${RESET}  $*"; }
 log_ok()      { echo -e "${GREEN}[OK]${RESET}    $*"; }
@@ -114,20 +120,20 @@ install_rsync() {
     # Detect package manager
     if command -v apt &>/dev/null; then
         log_info "Detected apt package manager (Debian/Ubuntu)"
-        apt update -qq 2>/dev/null
-        apt install -y rsync libssl-dev libevent-dev -qq 2>/dev/null
+        $SUDO apt update -qq 2>/dev/null || true
+        $SUDO apt install -y rsync -qq 2>/dev/null
     elif command -v yum &>/dev/null; then
         log_info "Detected yum package manager (CentOS/RHEL)"
-        yum install -y rsync openssl-devel libevent-devel -q 2>/dev/null
+        $SUDO yum install -y rsync -q 2>/dev/null
     elif command -v dnf &>/dev/null; then
         log_info "Detected dnf package manager (Fedora)"
-        dnf install -y rsync openssl-devel libevent-devel -q 2>/dev/null
+        $SUDO dnf install -y rsync -q 2>/dev/null
     elif command -v apk &>/dev/null; then
         log_info "Detected apk package manager (Alpine)"
-        apk add rsync openssl-dev libevent-dev -q 2>/dev/null
+        $SUDO apk add rsync -q 2>/dev/null
     elif command -v pacman &>/dev/null; then
         log_info "Detected pacman package manager (Arch)"
-        pacman -S --noconfirm rsync openssl libevent 2>/dev/null
+        $SUDO pacman -S --noconfirm rsync 2>/dev/null
     else
         log_error "Could not detect package manager. Please install rsync manually."
         exit 1
@@ -151,17 +157,17 @@ install_build_essential() {
     # Detect package manager
     if command -v apt &>/dev/null; then
         log_info "Detected apt package manager (Debian/Ubuntu)"
-        apt update -qq 2>/dev/null
-        apt install -y build-essential -qq 2>/dev/null
+        $SUDO apt update -qq 2>/dev/null || true
+        $SUDO apt install -y build-essential -qq 2>/dev/null
     elif command -v yum &>/dev/null; then
         log_info "Detected yum package manager (CentOS/RHEL)"
-        yum groupinstall -y "Development Tools" -q 2>/dev/null
+        $SUDO yum groupinstall -y "Development Tools" -q 2>/dev/null
     elif command -v dnf &>/dev/null; then
         log_info "Detected dnf package manager (Fedora)"
-        dnf groupinstall -y "Development Tools" -q 2>/dev/null
+        $SUDO dnf groupinstall -y "Development Tools" -q 2>/dev/null
     elif command -v apk &>/dev/null; then
         log_info "Detected apk package manager (Alpine)"
-        apk add build-base -q 2>/dev/null
+        $SUDO apk add build-base -q 2>/dev/null
     else
         log_error "Could not detect package manager. Please install build-essential manually:"
         echo "  Debian/Ubuntu: apt install -y build-essential"
@@ -225,19 +231,19 @@ install_nodejs() {
     if command -v apt &>/dev/null; then
         log_info "Detected apt package manager (Debian/Ubuntu)"
         # Add NodeSource repository for latest Node.js
-        curl -fsSL https://deb.nodesource.com/setup_20.x | bash - 2>/dev/null
-        apt install -y nodejs -qq 2>/dev/null
+        curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO bash - 2>/dev/null
+        $SUDO apt install -y nodejs -qq 2>/dev/null
     elif command -v yum &>/dev/null; then
         log_info "Detected yum package manager (CentOS/RHEL)"
-        curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - 2>/dev/null
-        yum install -y nodejs -q 2>/dev/null
+        curl -fsSL https://rpm.nodesource.com/setup_20.x | $SUDO bash - 2>/dev/null
+        $SUDO yum install -y nodejs -q 2>/dev/null
     elif command -v dnf &>/dev/null; then
         log_info "Detected dnf package manager (Fedora)"
-        curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - 2>/dev/null
-        dnf install -y nodejs -q 2>/dev/null
+        curl -fsSL https://rpm.nodesource.com/setup_20.x | $SUDO bash - 2>/dev/null
+        $SUDO dnf install -y nodejs -q 2>/dev/null
     elif command -v apk &>/dev/null; then
         log_info "Detected apk package manager (Alpine)"
-        apk add nodejs npm -q 2>/dev/null
+        $SUDO apk add nodejs npm -q 2>/dev/null
     else
         log_error "Could not detect package manager. Please install Node.js manually:"
         echo "  Visit: https://nodejs.org/"
@@ -256,6 +262,26 @@ install_nodejs() {
     echo ""
 }
 
+# ─── Install Tor dependencies (libevent) ──────────────────────────────────
+install_tor_deps() {
+    log_info "Installing dependencies for Tor binary (libevent, libssl)..."
+    if command -v apt &>/dev/null; then
+        $SUDO apt update -qq 2>/dev/null || true
+        $SUDO apt install -y tor -qq 2>/dev/null
+    elif command -v yum &>/dev/null; then
+        $SUDO yum install -y epel-release -q 2>/dev/null
+        $SUDO yum install -y tor -q 2>/dev/null
+    elif command -v dnf &>/dev/null; then
+        $SUDO dnf install -y tor -q 2>/dev/null
+    elif command -v apk &>/dev/null; then
+        $SUDO apk add tor -q 2>/dev/null
+    elif command -v pacman &>/dev/null; then
+        $SUDO pacman -S --noconfirm tor 2>/dev/null
+    else
+        log_warn "Could not detect package manager to install Tor dependencies."
+    fi
+}
+
 # ─── Check and install tools ────────────────────────────────────────────────
 check_tool() {
     if ! command -v "$1" &>/dev/null; then
@@ -271,6 +297,9 @@ check_tool() {
                 ;;
             rsync)
                 install_rsync
+                ;;
+            tor)
+                install_tor_deps
                 ;;
             *)
                 log_error "Tool '$1' not found.${2:+  Hint: $2}"
@@ -306,6 +335,9 @@ if $BUILD_DAEMON; then
     
     # Check for cargo (will auto-install if missing)
     check_tool cargo
+    
+    # Check for tor (will auto-install if missing, to satisfy libevent)
+    check_tool tor
     
     # Make sure cargo is in PATH for this session
     export PATH="$HOME/.cargo/bin:$PATH"
@@ -382,7 +414,7 @@ if $BUILD_WEB; then
         
         if [[ -f "$WEB_DIR/package.json" ]]; then
             # Install dependencies quietly
-            (cd "$WEB_DIR" && npm ci --silent 2>/dev/null || npm install --silent 2>/dev/null)
+            (cd "$WEB_DIR" && { npm ci --silent 2>/dev/null || npm install --silent 2>/dev/null; })
             
             # Update caniuse-lite to remove warning
             (cd "$WEB_DIR" && npx --yes update-browserslist-db@latest --silent 2>/dev/null || true)
