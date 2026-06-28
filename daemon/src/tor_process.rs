@@ -141,24 +141,35 @@ pub async fn start_tor_instance(
     let mut cmd = Command::new(&tor_bin);
     cmd.arg("-f").arg(&torrc_path)
        .stdout(Stdio::piped())
-       .stderr(Stdio::null())
+       .stderr(Stdio::piped())
        .kill_on_drop(true);
 
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
     let stdout = child.stdout.take().unwrap();
+    let stderr = child.stderr.take().unwrap();
     
     let (bootstrap_tx, bootstrap_rx) = tokio::sync::oneshot::channel::<bool>();
     let log_name = instance_name.clone();
     
     tokio::spawn(async move {
-        let mut lines = BufReader::new(stdout).lines();
+        let mut stdout_lines = BufReader::new(stdout).lines();
+        let mut stderr_lines = BufReader::new(stderr).lines();
         let mut bootstrap_tx = Some(bootstrap_tx);
-        while let Ok(Some(line)) = lines.next_line().await {
-            if line.contains("Bootstrapped 100%") {
-                if let Some(tx) = bootstrap_tx.take() { let _ = tx.send(true); }
-            }
-            if line.contains("[warn]") || line.contains("[err]") {
-                warn!("[{}] {}", log_name, line);
+        
+        loop {
+            tokio::select! {
+                Ok(Some(line)) = stdout_lines.next_line() => {
+                    if line.contains("Bootstrapped 100%") {
+                        if let Some(tx) = bootstrap_tx.take() { let _ = tx.send(true); }
+                    }
+                    if line.contains("[warn]") || line.contains("[err]") {
+                        warn!("[{}] {}", log_name, line);
+                    }
+                }
+                Ok(Some(line)) = stderr_lines.next_line() => {
+                    error!("[{}] STDERR: {}", log_name, line);
+                }
+                else => break,
             }
         }
         if let Some(tx) = bootstrap_tx.take() { let _ = tx.send(false); }
@@ -246,7 +257,7 @@ pub fn spawn_route_worker(
             
             if active_instance.is_none() || swap_allowed || active_lat == NOT_CONNECTED {
                 info!("🔄 [{}] Worker spawning test Tor instance...", name);
-                if let Ok(test_inst) = start_tor_instance(
+                match start_tor_instance(
                     &name,
                     &country_code,
                     tor_bin.clone(),
@@ -254,38 +265,41 @@ pub fn spawn_route_worker(
                     geoip_path.clone(),
                     geoip6_path.clone()
                 ).await {
-                    let proxy_url = format!("socks5h://{}", test_inst.socks_addr);
-                    let (test_lat, test_ip) = measure_latency(&proxy_url).await;
-                    
-                    if active_instance.is_none() || (test_lat != NOT_CONNECTED && test_lat < active_lat) {
-                        info!("✅ [{}] Swapping Router to new instance! (latency: {}ms)", name, test_lat.as_millis());
+                    Ok(test_inst) => {
+                        let proxy_url = format!("socks5h://{}", test_inst.socks_addr);
+                        let (test_lat, test_ip) = measure_latency(&proxy_url).await;
                         
-                        let old_instance = active_instance.take();
-                        
-                        {
-                            let mut s = slot.write();
-                            s.draining = s.active.clone();
-                            s.active = Some(Backend { socks: test_inst.socks_addr.clone() });
+                        if active_instance.is_none() || (test_lat != NOT_CONNECTED && test_lat < active_lat) {
+                            info!("✅ [{}] Swapping Router to new instance! (latency: {}ms)", name, test_lat.as_millis());
+                            
+                            let old_instance = active_instance.take();
+                            
+                            {
+                                let mut s = slot.write();
+                                s.draining = s.active.clone();
+                                s.active = Some(Backend { socks: test_inst.socks_addr.clone() });
+                            }
+                            
+                            active_instance = Some(test_inst);
+                            last_swap = now_time;
+                            
+                            let iso = now_iso();
+                            *node_state.latency.write() = test_lat;
+                            *node_state.tor_ip.write() = test_ip.clone();
+                            *node_state.last_checked_at.write() = Some(iso.clone());
+                            let _ = crate::config::update_route_state_by_name(&db_path, &name, test_ip.as_deref(), Some(&iso));
+                            
+                            if let Some(old) = old_instance {
+                                old.stop();
+                            }
+                        } else {
+                            info!("➖ [{}] Test instance not better ({}ms >= {}ms), discarding.", name, test_lat.as_millis(), active_lat.as_millis());
+                            test_inst.stop();
                         }
-                        
-                        active_instance = Some(test_inst);
-                        last_swap = now_time;
-                        
-                        let iso = now_iso();
-                        *node_state.latency.write() = test_lat;
-                        *node_state.tor_ip.write() = test_ip.clone();
-                        *node_state.last_checked_at.write() = Some(iso.clone());
-                        let _ = crate::config::update_route_state_by_name(&db_path, &name, test_ip.as_deref(), Some(&iso));
-                        
-                        if let Some(old) = old_instance {
-                            old.stop();
-                        }
-                    } else {
-                        info!("➖ [{}] Test instance not better ({}ms >= {}ms), discarding.", name, test_lat.as_millis(), active_lat.as_millis());
-                        test_inst.stop();
                     }
-                } else {
-                    error!("⚠️ [{}] Failed to spawn test Tor instance", name);
+                    Err(e) => {
+                        error!("⚠️ [{}] Failed to spawn test Tor instance: {}", name, e);
+                    }
                 }
             }
             
