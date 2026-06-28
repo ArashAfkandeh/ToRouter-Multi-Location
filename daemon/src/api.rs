@@ -13,7 +13,7 @@ use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tower_http::services::ServeDir;
-use tracing::{info, warn, error, debug};
+use tracing::{info, error};
 
 use crate::config::{self, RouteConfig, SettingsUpdate};
 // web restart is signalled via the daemon's restart channel; no exec/spawn here.

@@ -83,7 +83,7 @@ async fn stop_route(handles: ManagedRoute) {
     let _ = time::timeout(SHUTDOWN_TIMEOUT, handles.worker_handle).await;
 }
 
-use tracing::{info, warn, error, debug};
+use tracing::{info, error, debug};
 
 pub async fn run_daemon(db_path: &str, api_bind: &str, web_dir: Option<String>) {
     let abs_db_path = match fs::canonicalize(db_path) {

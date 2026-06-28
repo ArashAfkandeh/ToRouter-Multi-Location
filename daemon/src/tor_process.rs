@@ -158,8 +158,10 @@ pub async fn start_tor_instance(
     
     let (bootstrap_tx, bootstrap_rx) = tokio::sync::oneshot::channel::<bool>();
     let log_name = instance_name.clone();
-    
+    let log_name_spawn = log_name.clone();
+
     tokio::spawn(async move {
+        let log_name = log_name_spawn;
         let mut stdout_lines = BufReader::new(stdout).lines();
         let mut stderr_lines = BufReader::new(stderr).lines();
         let mut bootstrap_tx = Some(bootstrap_tx);
