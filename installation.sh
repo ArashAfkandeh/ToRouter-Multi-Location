@@ -57,6 +57,17 @@ start_service() {
     print_colored "$CYAN" "╚═══════════════════════════════════════════════════════════════╝"
     echo ""
     
+    # Install required packages
+    print_colored "$YELLOW" "📦 Installing required packages (libssl-dev, libevent-dev)..."
+    sudo apt-get update -qq
+    sudo apt-get install -y libssl-dev libevent-dev
+    if [ $? -ne 0 ]; then
+        print_colored "$RED" "✗ Error: Failed to install required packages"
+        exit 1
+    fi
+    print_colored "$GREEN" "✓ Required packages installed successfully"
+    echo ""
+    
     # Check if service file exists
     check_service_file
     
