@@ -685,7 +685,7 @@ function createNodeCard(node) {
                     </div>
                     <div class="flex justify-between items-center py-1">
                         <span class="text-slate-500 dark:text-slate-400 font-medium">${t('card_auth')}</span>
-                        <span data-el="auth-req" class="font-mono text-slate-900 dark:text-white">${(node.username && node.password) ? '<i class="fa-solid fa-lock" style="color: rgb(0, 0, 0);"></i>' : '<i class="fa-solid fa-lock-open" style="color: rgb(190, 198, 212);"></i>'}</span>
+                        <span data-el="auth-req" class="font-mono text-slate-900 dark:text-white">${(node.username && node.password) ? '<i class="fa-solid fa-lock"></i>' : '<i class="fa-solid fa-lock-open"></i>'}</span>
                     </div>
                 </div>
             </div>
@@ -776,7 +776,7 @@ function updateNodeCard(node) {
 
     const authEl = card.querySelector('[data-el="auth-req"]');
     if (authEl) {
-        const authHtml = (node.username && node.password) ? '<i class="fa-solid fa-lock" style="color: rgb(0, 0, 0);"></i>' : '<i class="fa-solid fa-lock-open" style="color: rgb(190, 198, 212);"></i>';
+        const authHtml = (node.username && node.password) ? '<i class="fa-solid fa-lock"></i>' : '<i class="fa-solid fa-lock-open"></i>';
         if (authEl.innerHTML !== authHtml) authEl.innerHTML = authHtml;
     }
 }

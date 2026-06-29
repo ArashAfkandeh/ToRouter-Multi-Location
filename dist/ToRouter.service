@@ -1,0 +1,34 @@
+[Unit]
+Description=ToRouter Multi-Location Tor Manager
+Documentation=https://github.com/ArashAfkandeh/ToRouter-Multi-Location
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+WorkingDirectory=/opt/ToRouter-Multi-Location
+
+ExecStart=/opt/ToRouter-Multi-Location/dist/ToRouter --web-dir /opt/ToRouter-Multi-Location/dist/web
+
+Restart=always
+RestartSec=5
+
+KillSignal=SIGINT
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=torouter
+
+LimitNOFILE=65536
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+ReadWritePaths=/opt/ToRouter-Multi-Location
+
+[Install]
+WantedBy=multi-user.target

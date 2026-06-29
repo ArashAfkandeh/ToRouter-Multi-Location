@@ -33,7 +33,7 @@
             setTimeout(() => document.documentElement.classList.add('loaded'), 50);
         });
     </script>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%237d4698'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z'/%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%237c3aed'/%3E%3Cg fill='none' stroke='white' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.5 11.55a9 9 0 0 1 13.08 0' stroke-width='1.6' opacity='0.45'/%3E%3Cpath d='M2.5 8.5a13.5 13.5 0 0 1 19 0' stroke-width='1.4' opacity='0.25'/%3E%3Cpath d='M8.8 14.9a5 5 0 0 1 6.4 0' stroke-width='1.8' opacity='0.8'/%3E%3Ccircle cx='12' cy='18' r='1.4' fill='white' stroke='none'/%3E%3Cline x1='12' y1='19.4' x2='12' y2='21' stroke-width='1.5'/%3E%3Cline x1='9.8' y1='21' x2='14.2' y2='21' stroke-width='1.5'/%3E%3C/g%3E%3C/svg%3E">
     <script type="module" defer>
       import { polyfillCountryFlagEmojis } from "https://cdn.skypack.dev/country-flag-emoji-polyfill";
       polyfillCountryFlagEmojis();
@@ -58,12 +58,17 @@
 
                 <div class="relative p-8 text-center pt-10">
                     <div class="mx-auto w-16 h-16 bg-brand-500 rounded-full flex items-center justify-center shadow-lg shadow-brand-500/30 mb-6">
-                        <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M5 12.55a11 11 0 0 1 14.08 0" stroke-width="1.5" opacity="0.4"/>
+                          <path d="M1.42 9a16 16 0 0 1 21.16 0" stroke-width="1.5" opacity="0.2"/>
+                          <path d="M8.53 16.11a6 6 0 0 1 6.95 0" stroke-width="1.8" opacity="0.7"/>
+                          <circle cx="12" cy="20" r="1.5" fill="white" stroke="none"/>
+                          <line x1="12" y1="21.5" x2="12" y2="23" stroke-width="1.5"/>
+                          <line x1="9.5" y1="23" x2="14.5" y2="23" stroke-width="1.5"/>
                         </svg>
                     </div>
                     
-                    <h2 data-i18n="login_title" class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">ToRouter Control</h2>
+                    <h2 data-i18n="login_title" class="text-2xl font-bold tracking-tight" style="font-style:italic;background:linear-gradient(90deg,#7c3aed 0%,#2563eb 45%,#06b6d4 75%,#22c55e 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">ToRouter Control</h2>
                     <p data-i18n="login_desc" class="text-slate-500 dark:text-slate-400 mt-2">Sign in to manage your private nodes.</p>
                 </div>
                 <div class="relative p-8 pt-0">
@@ -91,12 +96,17 @@
             <nav class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-3 py-3 sm:px-6 sm:py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm flex-wrap gap-y-3">
                 <div class="flex items-center gap-2 sm:gap-3">
                     <div class="w-8 h-8 sm:w-9 sm:h-9 bg-brand-500 rounded-lg flex items-center justify-center shadow-md shrink-0">
-                        <svg class="w-5 h-5 sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M5 12.55a11 11 0 0 1 14.08 0" stroke-width="1.5" opacity="0.4"/>
+                          <path d="M1.42 9a16 16 0 0 1 21.16 0" stroke-width="1.5" opacity="0.2"/>
+                          <path d="M8.53 16.11a6 6 0 0 1 6.95 0" stroke-width="1.8" opacity="0.7"/>
+                          <circle cx="12" cy="20" r="1.5" fill="white" stroke="none"/>
+                          <line x1="12" y1="21.5" x2="12" y2="23" stroke-width="1.5"/>
+                          <line x1="9.5" y1="23" x2="14.5" y2="23" stroke-width="1.5"/>
                         </svg>
                     </div>
                     <div class="min-w-0">
-                        <h1 data-i18n="nav_title" class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">ToRouter</h1>
+                        <h1 data-i18n="nav_title" class="text-lg sm:text-xl font-bold tracking-tight leading-tight" style="font-style:italic;background:linear-gradient(90deg,#7c3aed 0%,#2563eb 45%,#06b6d4 75%,#22c55e 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">ToRouter</h1>
                         <p class="hidden sm:block text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">Support developer on Telegram and GitHub</p>
                     </div>
                 </div>
