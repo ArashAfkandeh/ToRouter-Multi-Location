@@ -20,7 +20,7 @@
 
 # 🎥 نمای وب پنل مدیریت:
 <p align="center">
-  <img src="webpanel.gif" width="800">
+  <img src="./webpanel/webpanel.gif" width="800">
 </p>
 
 ## شروع سریع
