@@ -278,6 +278,9 @@ document.addEventListener('DOMContentLoaded', () => {
     el.formRoute.addEventListener('submit', handleRouteSave);
     el.modalRouteCloses.forEach(btn => btn.addEventListener('click', closeRouteModal));
 
+    // Password Visibility Toggles
+    setupPasswordToggles();
+
     // Settings Modal
     el.btnSettings.addEventListener('click', openSettingsModal);
     el.formSettings.addEventListener('submit', handleSettingsSave);
@@ -387,7 +390,23 @@ function applyTranslations() {
     });
 }
 
-// --- API Helpers ---
+// --- Password Visibility Toggle ---
+function setupPasswordToggles() {
+    document.querySelectorAll('.pwd-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const input = document.getElementById(btn.dataset.target);
+            if (!input) return;
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            const eyeIcon = btn.querySelector('.eye-icon');
+            const eyeOffIcon = btn.querySelector('.eye-off-icon');
+            if (eyeIcon) eyeIcon.classList.toggle('hidden', isPassword);
+            if (eyeOffIcon) eyeOffIcon.classList.toggle('hidden', !isPassword);
+        });
+    });
+}
+
+
 async function apiCall(endpoint, options = {}) {
     console.debug(`[API Request] -> ${options.method || 'GET'} ${API_BASE}${endpoint}`, options.body ? JSON.parse(options.body) : '');
     try {
@@ -862,6 +881,15 @@ function openRouteModal(id = null) {
     el.formRoute.reset();
     el.routeInputs.id.value = '';
     el.routeTitle.textContent = 'Create Node';
+    // Reset password field visibility state
+    el.routeInputs.pass.type = 'password';
+    const routePassToggle = el.routeInputs.pass.parentElement && el.routeInputs.pass.parentElement.querySelector('.pwd-toggle');
+    if (routePassToggle) {
+        const eyeIcon = routePassToggle.querySelector('.eye-icon');
+        const eyeOffIcon = routePassToggle.querySelector('.eye-off-icon');
+        if (eyeIcon) eyeIcon.classList.remove('hidden');
+        if (eyeOffIcon) eyeOffIcon.classList.add('hidden');
+    }
 
         if (id) {
             const nodeIdStr = String(id);
@@ -951,6 +979,15 @@ async function openSettingsModal() {
     el.settingsInputs.logLevel.value = data.log_level || 'info';
     el.settingsInputs.adminUser.value = data.admin_username || '';
     el.settingsInputs.adminPass.value = '';
+    // Reset password field visibility state
+    el.settingsInputs.adminPass.type = 'password';
+    const adminPassToggle = el.settingsInputs.adminPass.parentElement && el.settingsInputs.adminPass.parentElement.querySelector('.pwd-toggle');
+    if (adminPassToggle) {
+        const eyeIcon = adminPassToggle.querySelector('.eye-icon');
+        const eyeOffIcon = adminPassToggle.querySelector('.eye-off-icon');
+        if (eyeIcon) eyeIcon.classList.remove('hidden');
+        if (eyeOffIcon) eyeOffIcon.classList.add('hidden');
+    }
     el.settingsInputs.webBase.value = data.web_base_path || '';
     el.settingsInputs.domain.value = data.domain || '';
     el.settingsInputs.certPath.value = data.custom_cert_path || '';
