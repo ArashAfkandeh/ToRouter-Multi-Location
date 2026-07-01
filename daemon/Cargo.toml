@@ -8,22 +8,23 @@ tokio       = { version = "1",  features = ["rt-multi-thread","net","io-util","p
 tokio-stream = "0.1"
 serde       = { version = "1.0",   features = ["derive"] }
 serde_json  = "1.0"
-toml        = "0.8"
 axum        = "0.8"
 axum-server = { version = "0.8", features = ["tls-rustls"] }
 rustls-acme = { version = "0.15.3", features = ["axum"] }
-tower-http  = { version = "0.7",   features = ["fs"] }
-reqwest     = { version = "0.12", default-features = false, features = ["rustls-tls", "socks", "json", "charset", "http2", "macos-system-configuration"] }
-regex       = "1.11"
+tower-http  = { version = "0.7",   features = ["fs", "set-header"] }
+reqwest     = { version = "0.12", default-features = false, features = ["rustls-tls", "socks", "json", "charset", "http2"] }
 parking_lot = "0.12"
 lazy_static = "1.5"
 rusqlite    = { version = "0.32.1", features = ["bundled"] }
 deadpool-sqlite = "0.9.0"
 tracing     = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "registry"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "registry", "fmt", "std", "ansi"] }
 jsonwebtoken = "9.3"
 chrono      = "0.4"
 libc        = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["macos-system-configuration"] }
 
 [profile.release]
 opt-level = 3

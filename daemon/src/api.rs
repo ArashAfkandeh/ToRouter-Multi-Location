@@ -81,7 +81,11 @@ pub async fn start_web_server(
         let mut app = Router::new().merge(api_routes);
         if let Some(ref dir) = web_dir {
             let serve = tower_http::services::ServeDir::new(dir).fallback(tower_http::services::ServeFile::new(format!("{}/index.html", dir)));
-            app = app.fallback_service(serve);
+            let serve_router = Router::new().fallback_service(serve).layer(tower_http::set_header::SetResponseHeaderLayer::overriding(
+                axum::http::header::CACHE_CONTROL,
+                axum::http::HeaderValue::from_static("public, max-age=86400"),
+            ));
+            app = app.fallback_service(serve_router);
         } else {
             app = app.fallback(|| async { (axum::http::StatusCode::NOT_FOUND, "Web panel not configured. Start the daemon with --web-dir <path/to/dist>") });
         }
@@ -90,7 +94,11 @@ pub async fn start_web_server(
         let mut nested = Router::new().merge(api_routes);
         if let Some(ref dir) = web_dir {
             let serve = tower_http::services::ServeDir::new(dir).fallback(tower_http::services::ServeFile::new(format!("{}/index.html", dir)));
-            nested = nested.fallback_service(serve);
+            let serve_router = Router::new().fallback_service(serve).layer(tower_http::set_header::SetResponseHeaderLayer::overriding(
+                axum::http::header::CACHE_CONTROL,
+                axum::http::HeaderValue::from_static("public, max-age=86400"),
+            ));
+            nested = nested.fallback_service(serve_router);
         } else {
             let not_found = axum::routing::any(|| async { (axum::http::StatusCode::NOT_FOUND, "Web panel not configured.") });
             nested = nested.fallback_service(not_found);
@@ -206,6 +214,10 @@ struct Claims {
 
 lazy_static::lazy_static! {
     static ref JWT_SECRET: String = format!("{:x}{:x}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos(), std::process::id());
+    static ref JWT_ENCODING_KEY: EncodingKey = EncodingKey::from_secret(JWT_SECRET.as_bytes());
+    static ref JWT_DECODING_KEY: DecodingKey = DecodingKey::from_secret(JWT_SECRET.as_bytes());
+    static ref JWT_HEADER: Header = Header::default();
+    static ref JWT_VALIDATION: Validation = Validation::default();
 }
 
 fn generate_token() -> String {
@@ -219,7 +231,7 @@ fn generate_token() -> String {
         exp: expiration as usize,
     };
     
-    encode(&Header::default(), &claims, &EncodingKey::from_secret(JWT_SECRET.as_bytes())).unwrap()
+    encode(&JWT_HEADER, &claims, &JWT_ENCODING_KEY).unwrap()
 }
 
 fn extract_session(headers: &HeaderMap) -> Option<String> {
@@ -235,7 +247,7 @@ fn require_auth(_state: &AppState, headers: &HeaderMap) -> Result<(), (StatusCod
     let token = extract_session(headers)
         .ok_or((StatusCode::UNAUTHORIZED, "Not authenticated"))?;
         
-    match decode::<Claims>(&token, &DecodingKey::from_secret(JWT_SECRET.as_bytes()), &Validation::default()) {
+    match decode::<Claims>(&token, &JWT_DECODING_KEY, &JWT_VALIDATION) {
         Ok(_) => Ok(()),
         Err(_) => Err((StatusCode::UNAUTHORIZED, "Invalid session")),
     }

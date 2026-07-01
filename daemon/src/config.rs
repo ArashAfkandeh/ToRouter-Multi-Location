@@ -264,12 +264,12 @@ pub fn update_route_conn(conn: &Connection, id: i64, route: &RouteConfig) -> Res
     Ok(())
 }
 
-pub async fn update_route_state_by_name(pool: &deadpool_sqlite::Pool, name: String, tor_ip: Option<String>, last_checked_at: Option<String>) -> Result<(), String> {
+pub async fn update_route_state_by_id(pool: &deadpool_sqlite::Pool, id: i64, tor_ip: Option<String>, last_checked_at: Option<String>) -> Result<(), String> {
     let conn = pool.get().await.map_err(|e| e.to_string())?;
     conn.interact(move |c| {
         c.execute(
-            "UPDATE routes SET tor_ip = ?1, last_checked_at = ?2 WHERE name = ?3",
-            params![tor_ip, last_checked_at, name],
+            "UPDATE routes SET tor_ip = ?1, last_checked_at = ?2 WHERE id = ?3",
+            params![tor_ip, last_checked_at, id],
         )
     }).await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())?;
     Ok(())

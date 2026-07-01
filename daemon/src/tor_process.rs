@@ -296,7 +296,7 @@ pub fn spawn_route_worker(
                     tor_ip: ip.clone(),
                     last_checked_at: Some(iso.clone()),
                 }).await;
-                let _ = crate::config::update_route_state_by_name(&db_pool, name.clone(), ip.clone(), Some(iso)).await;
+                let _ = crate::config::update_route_state_by_id(&db_pool, route_id, ip.clone(), Some(iso)).await;
             }
             
             if active_instance.is_none() || swap_allowed || active_lat == NOT_CONNECTED {
@@ -333,7 +333,7 @@ pub fn spawn_route_worker(
                                 tor_ip: test_ip.clone(),
                                 last_checked_at: Some(iso.clone()),
                             }).await;
-                            let _ = crate::config::update_route_state_by_name(&db_pool, name.clone(), test_ip.clone(), Some(iso)).await;
+                            let _ = crate::config::update_route_state_by_id(&db_pool, route_id, test_ip.clone(), Some(iso)).await;
                             
                             if let Some(old) = old_instance {
                                 old.stop();
