@@ -22,10 +22,17 @@ Alpine.store('app', {
     nodes: [],
     metrics: { total: 0, healthy: 0, error: 0 },
     ws: null,
+    refreshInterval: localStorage.getItem('refreshInterval') !== null ? parseInt(localStorage.getItem('refreshInterval')) : 15,
+    fetchIntervalId: null,
     
     init() {
         this.applyTheme();
         this.checkAuth();
+    },
+
+    updateRefreshInterval() {
+        localStorage.setItem('refreshInterval', this.refreshInterval);
+        this.startPeriodicFetch();
     },
 
     connectWs() {
@@ -136,6 +143,10 @@ Alpine.store('app', {
             this.ws.close();
             this.ws = null;
         }
+        if (this.fetchIntervalId) {
+            clearInterval(this.fetchIntervalId);
+            this.fetchIntervalId = null;
+        }
         if (this.fetchInterval) {
             clearInterval(this.fetchInterval);
             this.fetchInterval = null;
@@ -143,12 +154,17 @@ Alpine.store('app', {
     },
     
     startPeriodicFetch() {
+        if (this.fetchIntervalId) clearInterval(this.fetchIntervalId);
         if (this.fetchInterval) clearInterval(this.fetchInterval);
-        this.fetchInterval = setInterval(() => {
-            if (this.isAuthenticated) {
-                this.fetchNodes();
-            }
-        }, 15000); // 15 seconds
+        
+        const interval = parseInt(this.refreshInterval);
+        if (interval > 0) {
+            this.fetchIntervalId = setInterval(() => {
+                if (this.isAuthenticated) {
+                    this.fetchNodes();
+                }
+            }, interval * 1000);
+        }
     },
     
     async fetchNodes() {

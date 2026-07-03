@@ -26,6 +26,7 @@ export const nodesService = {
             
             if (latencyNum !== null) {
                 node.status = latencyNum < 800 ? 'healthy' : 'warning';
+                node._frontendProbed = true;
             }
             
             if (node.status === 1 || node.status === 'healthy') node.status = 'healthy';

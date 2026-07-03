@@ -1,0 +1,49 @@
+<!-- Nav -->
+<nav class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-3 py-3 sm:px-6 sm:py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm flex-wrap gap-y-3">
+  <div class="flex items-center gap-2 sm:gap-3">
+    <div class="w-8 h-8 sm:w-9 sm:h-9 bg-brand-500 rounded-lg flex items-center justify-center shadow-md shrink-0">
+      <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 12.55a11 11 0 0 1 14.08 0" stroke-width="1.5" opacity="0.4" />
+        <path d="M1.42 9a16 16 0 0 1 21.16 0" stroke-width="1.5" opacity="0.2" />
+        <path d="M8.53 16.11a6 6 0 0 1 6.95 0" stroke-width="1.8" opacity="0.7" />
+        <circle cx="12" cy="20" r="1.5" fill="white" stroke="none" />
+        <line x1="12" y1="21.5" x2="12" y2="23" stroke-width="1.5" />
+        <line x1="9.5" y1="23" x2="14.5" y2="23" stroke-width="1.5" />
+      </svg>
+    </div>
+    <div class="min-w-0">
+      <h1 x-text="$store.app.t('nav_title')" class="text-lg sm:text-xl font-bold tracking-tight leading-tight" style="font-style: italic; background: linear-gradient(90deg, #7c3aed 0%, #2563eb 45%, #06b6d4 75%, #22c55e 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></h1>
+      <p class="hidden sm:flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+        Support developer on Telegram and GitHub
+        <a href="https://t.me/G_B_O_X" target="_blank" title="Telegram" class="text-slate-400 hover:text-[#0088cc] transition-colors"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg></a>
+        <a href="https://github.com/GeniBox/ToRouter" target="_blank" title="GitHub" class="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" /></svg></a>
+      </p>
+    </div>
+  </div>
+  <div class="flex items-center gap-1 sm:gap-3 overflow-x-auto no-scrollbar">
+    <div class="flex items-center bg-slate-100 dark:bg-slate-800 rounded-md px-1.5 py-1 border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
+      <svg class="w-3.5 h-3.5 text-slate-500 mx-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      <select x-model="$store.app.refreshInterval" @change="$store.app.updateRefreshInterval()" class="bg-transparent border-none text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 py-0 pl-1 pr-6 focus:ring-0 cursor-pointer">
+        <option value="5">5s</option>
+        <option value="10">10s</option>
+        <option value="15">15s</option>
+        <option value="30">30s</option>
+        <option value="60">60s</option>
+        <option value="0">Off</option>
+      </select>
+    </div>
+    
+    <button @click="$store.app.toggleLang()" x-text="$store.app.lang === 'en' ? 'FA' : 'EN'" class="px-2 py-1 text-xs sm:text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 dark:text-slate-400 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-md transition-colors shadow-sm border border-slate-200 dark:border-slate-700 shrink-0"></button>
+    <button @click="$store.app.toggleTheme()" class="p-1.5 sm:p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white rounded-lg transition-colors shrink-0" title="Toggle Theme">
+      <svg class="w-4 h-4 sm:w-5 sm:h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+      <svg class="w-4 h-4 sm:w-5 sm:h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+    </button>
+    <button @click="$store.app.fetchNodes()" class="p-1.5 sm:p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white rounded-lg transition-colors shrink-0" title="Refresh">
+      <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+    </button>
+    <button @click="settingsModalOpen = true" class="p-1.5 sm:p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white rounded-lg transition-colors shrink-0" title="Settings">
+      <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    </button>
+    <button @click="$store.app.logout()" x-text="$store.app.t('nav_logout')" class="px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0"></button>
+  </div>
+</nav>
