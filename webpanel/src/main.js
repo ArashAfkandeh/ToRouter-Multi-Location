@@ -18,21 +18,29 @@ window.logsService = logsService;
 Alpine.store('app', {
     lang: localStorage.getItem('lang') || 'en',
     theme: localStorage.getItem('theme') || 'dark',
+    updateInterval: parseInt(localStorage.getItem('updateInterval')) || 15,
     isAuthenticated: false,
     nodes: [],
     metrics: { total: 0, healthy: 0, error: 0 },
     ws: null,
-    refreshInterval: localStorage.getItem('refreshInterval') !== null ? parseInt(localStorage.getItem('refreshInterval')) : 15,
-    fetchIntervalId: null,
     
     init() {
         this.applyTheme();
         this.checkAuth();
+        this.fetchGithubStars();
     },
 
-    updateRefreshInterval() {
-        localStorage.setItem('refreshInterval', this.refreshInterval);
-        this.startPeriodicFetch();
+    async fetchGithubStars() {
+        try {
+            const response = await fetch('https://api.github.com/repos/ArashAfkandeh/ToRouter-Multi-Location');
+            if (response.ok) {
+                const data = await response.json();
+                const el = document.getElementById('github-stars-count');
+                if (el) el.textContent = '(' + data.stargazers_count + ')';
+            }
+        } catch (e) {
+            console.error('Failed to fetch github stars', e);
+        }
     },
 
     connectWs() {
@@ -143,28 +151,25 @@ Alpine.store('app', {
             this.ws.close();
             this.ws = null;
         }
-        if (this.fetchIntervalId) {
-            clearInterval(this.fetchIntervalId);
-            this.fetchIntervalId = null;
-        }
         if (this.fetchInterval) {
             clearInterval(this.fetchInterval);
             this.fetchInterval = null;
         }
     },
     
+    setUpdateInterval(seconds) {
+        this.updateInterval = seconds;
+        localStorage.setItem('updateInterval', seconds);
+        this.startPeriodicFetch();
+    },
+    
     startPeriodicFetch() {
-        if (this.fetchIntervalId) clearInterval(this.fetchIntervalId);
         if (this.fetchInterval) clearInterval(this.fetchInterval);
-        
-        const interval = parseInt(this.refreshInterval);
-        if (interval > 0) {
-            this.fetchIntervalId = setInterval(() => {
-                if (this.isAuthenticated) {
-                    this.fetchNodes();
-                }
-            }, interval * 1000);
-        }
+        this.fetchInterval = setInterval(() => {
+            if (this.isAuthenticated) {
+                this.fetchNodes();
+            }
+        }, this.updateInterval * 1000);
     },
     
     async fetchNodes() {
