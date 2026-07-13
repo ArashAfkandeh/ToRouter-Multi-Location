@@ -198,28 +198,28 @@ update_application() {
     
     # Step 3: Extract and replace files
     print_colored "$YELLOW" "📂 Step 3/5: Extracting and replacing files..."
-    
-    # Backup old directory if exists
-    if [ -d "$APP_DIR" ]; then
-        print_colored "$YELLOW" "📁 Backing up database files..."
-        rm -rf /tmp/tor_db_backup
-        mkdir -p /tmp/tor_db_backup
-        cp "$APP_DIR/tor_db.sqlite"* /tmp/tor_db_backup/ 2>/dev/null || true
+
+	# Backup old directory if exists
+	if [ -d "$APP_DIR" ]; then
+		print_colored "$YELLOW" "📁 Backing up database files..."
+		rm -rf /tmp/tor_db_backup
+		mkdir -p /tmp/tor_db_backup
+		cp "$APP_DIR/dist/tor_db.sqlite"* /tmp/tor_db_backup/ 2>/dev/null || true
+		
+		print_colored "$YELLOW" "📁 Removing old installation at $APP_DIR..."
+		rm -rf "$APP_DIR"
+	fi
+	
+	extract_tarball
+	echo ""
+	
+	# Restore database
+	if [ -d /tmp/tor_db_backup ]; then
+		print_colored "$YELLOW" "📁 Restoring database files..."
+		cp /tmp/tor_db_backup/tor_db.sqlite* "$APP_DIR/dist/" 2>/dev/null || true
+		rm -rf /tmp/tor_db_backup
+	fi
         
-        print_colored "$YELLOW" "📁 Removing old installation at $APP_DIR..."
-        rm -rf "$APP_DIR"
-    fi
-    
-    extract_tarball
-    echo ""
-    
-    # Restore database
-    if [ -d /tmp/tor_db_backup ]; then
-        print_colored "$YELLOW" "📁 Restoring database files..."
-        cp /tmp/tor_db_backup/tor_db.sqlite* "$APP_DIR/" 2>/dev/null || true
-        rm -rf /tmp/tor_db_backup
-    fi
-    
     # Step 4: Remove compressed file
     print_colored "$YELLOW" "🗑 Step 4/5: Removing compressed file..."
     cleanup_tarball
