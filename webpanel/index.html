@@ -36,8 +36,9 @@
     <div id="app" class="min-h-screen flex flex-col" x-cloak>
       <!-- Auth View -->
       <main
+        id="view-login"
         x-show="!$store.app.isAuthenticated"
-        class="flex-1 flex items-center justify-center p-4"
+        class="flex-1 flex items-center justify-center p-4 relative overflow-hidden"
       >
         <div
           class="w-full max-w-md bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200/80 dark:border-slate-700/80 relative"
@@ -501,7 +502,7 @@
                 class="flex flex-nowrap overflow-x-auto no-scrollbar gap-2 w-full sm:w-auto pb-1 sm:pb-0 shrink-0"
               >
                 <a
-                  :href="`Countries.html?lang=${$store.app.lang}&theme=${$store.app.theme}`"
+                  href="Countries.html"
                   target="_blank"
                   class="shrink-0 px-3 py-2 sm:px-4 sm:py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs sm:text-sm font-medium rounded-lg shadow-sm transition-all focus:ring-2 focus:ring-teal-500 flex items-center gap-1.5"
                 >
@@ -1427,7 +1428,9 @@
                         loading: false,
                         init() {
                             this.$watch('logsModalOpen', val => {
-                                // Initially, logs will be populated by the WS event but we can let it wait
+                                if (val) {
+                                    this.fetchLogs();
+                                }
                             });
                         },
                         handleWsUpdate(e) {
@@ -1465,8 +1468,36 @@
                             }
                         },
                         copy() {
-                            navigator.clipboard.writeText(this.filteredLogs.join('\n'));
-                            $store.toast.show($store.app.t('copied_to_clipboard'), 'success');
+                            const text = this.filteredLogs.join('\n');
+                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(text).then(() => {
+                                    $store.toast.show($store.app.t('copied_to_clipboard'), 'success');
+                                }).catch(err => {
+                                    this.fallbackCopy(text);
+                                });
+                            } else {
+                                this.fallbackCopy(text);
+                            }
+                        },
+                        fallbackCopy(text) {
+                            try {
+                                const ta = document.createElement('textarea');
+                                ta.value = text;
+                                ta.style.position = 'fixed';
+                                ta.style.left = '-9999px';
+                                document.body.appendChild(ta);
+                                ta.focus();
+                                ta.select();
+                                const successful = document.execCommand('copy');
+                                document.body.removeChild(ta);
+                                if (successful) {
+                                    $store.toast.show($store.app.t('copied_to_clipboard'), 'success');
+                                } else {
+                                    $store.toast.show('Failed to copy', 'error');
+                                }
+                            } catch (err) {
+                                $store.toast.show('Failed to copy: ' + err, 'error');
+                            }
                         }
                     }"
               @logs-updated.window="handleWsUpdate($event)"

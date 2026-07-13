@@ -595,7 +595,7 @@
                 }
             };
 
-            let currentLang = 'fa';
+            let currentLang = 'en';
             let currentData = [];
 
             // ===== پارس کردن پارامترهای URL =====
@@ -907,6 +907,7 @@
             const langLabelEl = document.getElementById('langLabel');
             toggleLangBtn.addEventListener('click', function() {
                 currentLang = currentLang === 'fa' ? 'en' : 'fa';
+                localStorage.setItem('lang', currentLang);
                 updateDirection();
                 updateTexts();
                 renderCountries(currentData);
@@ -925,7 +926,7 @@
             const urlTheme = urlParams.get('theme');
             let themeToUse = urlTheme;
             if (themeToUse !== 'dark' && themeToUse !== 'light') {
-                themeToUse = localStorage.getItem('theme');
+                themeToUse = localStorage.getItem('theme') || 'dark';
             }
             if (themeToUse === 'dark') {
                 isDark = true;
@@ -942,6 +943,36 @@
                     htmlRoot.removeAttribute('data-theme');
                     themeIcon.textContent = '🌙';
                     localStorage.setItem('theme', 'light');
+                }
+            });
+
+            // ===== همگام‌سازی دوطرفه بین تب‌ها =====
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'lang') {
+                    const newLang = e.newValue;
+                    if (newLang === 'en' || newLang === 'fa') {
+                        currentLang = newLang;
+                        updateDirection();
+                        updateTexts();
+                        renderCountries(currentData);
+                        if (langLabelEl) langLabelEl.textContent = currentLang === 'fa' ? 'EN' : 'FA';
+                        // بروزرسانی متن تعداد کشورها و رله‌ها
+                        if (currentData.length > 0) {
+                            const totalRelays = currentData.reduce((sum, c) => sum + c.count, 0);
+                            countInfo.textContent = `${currentData.length} ${t('countries')} | ${totalRelays} ${t('relays')}`;
+                        }
+                    }
+                } else if (e.key === 'theme') {
+                    const newTheme = e.newValue;
+                    if (newTheme === 'dark') {
+                        isDark = true;
+                        htmlRoot.setAttribute('data-theme', 'dark');
+                        themeIcon.textContent = '☀️';
+                    } else if (newTheme === 'light') {
+                        isDark = false;
+                        htmlRoot.removeAttribute('data-theme');
+                        themeIcon.textContent = '🌙';
+                    }
                 }
             });
 

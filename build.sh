@@ -369,21 +369,25 @@ if $BUILD_DAEMON; then
     fi
     log_ok "All assets present."
 
-    # ─── Cargo build ─────────────────────────────────────────────────────────
-    log_step "Compiling Rust (${BUILD_MODE})..."
-    CARGO_ARGS=("build")
-    [[ "$BUILD_MODE" == "release" ]] && CARGO_ARGS+=("--release")
-    [[ -n "$TARGET" ]]               && CARGO_ARGS+=("--target" "$TARGET")
-    $VERBOSE                         && CARGO_ARGS+=("--verbose")
-
-    if [[ -n "$TARGET" ]] && ! rustup target list --installed  | grep "$TARGET"; then
-        log_warn "Target '$TARGET' is not installed — installing..."
-        rustup target add "$TARGET" 
-    fi
-
-    T0=$(date +%s)
-    (cd "$DAEMON_BUILD_DIR" && cargo "${CARGO_ARGS[@]}")
-    log_ok "Compiled in $(($(date +%s) - T0))s."
+	# ─── Cargo build ─────────────────────────────────────────────────────────
+	log_step "Compiling Rust (${BUILD_MODE})..."
+	CARGO_ARGS=("build")
+	[[ "$BUILD_MODE" == "release" ]] && CARGO_ARGS+=("--release")
+	[[ -n "$TARGET" ]]               && CARGO_ARGS+=("--target" "$TARGET")
+	$VERBOSE                         && CARGO_ARGS+=("--verbose")
+	
+	# Set RUSTFLAGS to improve compatibility
+	export RUSTFLAGS="-C target-cpu=generic"
+	log_info "Using RUSTFLAGS: $RUSTFLAGS"
+	
+	if [[ -n "$TARGET" ]] && ! rustup target list --installed  | grep "$TARGET"; then
+		log_warn "Target '$TARGET' is not installed — installing..."
+		rustup target add "$TARGET" 
+	fi
+	
+	T0=$(date +%s)
+	(cd "$DAEMON_BUILD_DIR" && cargo "${CARGO_ARGS[@]}")
+	log_ok "Compiled in $(($(date +%s) - T0))s."
 
     # ─── Copy Binary ─────────────────────────────────────────────────────────
     BIN_NAME=$(grep -m1 '^name' "$DAEMON_BUILD_DIR/Cargo.toml" | sed 's/.*= *"\(.*\)"/\1/')
