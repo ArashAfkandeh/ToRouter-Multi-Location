@@ -10,7 +10,6 @@ CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DAEMON_DIR="$SCRIPT_DIR/daemon"
 WEB_DIR="$SCRIPT_DIR/webpanel"
-ASSETS_DIR="$SCRIPT_DIR/assets"
 DIST_DIR="$SCRIPT_DIR/dist"
 BUILD_ROOT="/root/tor-router-build"  # پوشه‌ی ساخت در root
 
@@ -108,7 +107,7 @@ install_rsync() {
     elif command -v pacman >/dev/null 2>&1 ; then
         $SUDO pacman -S rsync 
     else
-        log_error "Could not detect package manager. Please install rsync manually."
+        log_error "Could not detect package manager."
         exit 1
     fi
     if ! command -v rsync >/dev/null 2>&1 ; then exit 1; fi
@@ -214,13 +213,9 @@ check_tool() {
     fi
 }
 
-# ─── Auto-Update Tor Assets ──────────────────────────────────────────────────
-update_tor_assets() {
-    log_step "Updating Tor Assets (Auto-download)"
-    mkdir -p "$ASSETS_DIR"
-    
-    # حذف فایل tor-bin قدیمی (در صورتی که از نسخه‌های قبلی در پوشه جا مانده باشد)
-    rm -f "$ASSETS_DIR/tor-bin" 2>/dev/null || true
+# ─── Download and Setup Assets ───────────────────────────────────────────────
+download_tor_assets_to_dist() {
+    log_step "Downloading fresh Tor Assets directly to output folder..."
     
     check_tool jq
 
@@ -232,8 +227,8 @@ update_tor_assets() {
         aarch64|arm64) dl_arch="linux-aarch64" ;;
         i686|i386) dl_arch="linux-i686" ;;
         *) 
-            log_warn "Unsupported architecture ($arch) for auto-download. Using existing assets."
-            return 0 
+            log_error "Unsupported architecture ($arch) for downloading Tor assets."
+            exit 1
             ;;
     esac
 
@@ -247,8 +242,8 @@ update_tor_assets() {
     set -eo pipefail
 
     if [[ $curl_exit -ne 0 || -z "$version" || "$version" == "null" ]]; then
-        log_warn "Failed to fetch version from Tor API. Using existing assets."
-        return 0
+        log_error "Failed to fetch version from Tor API. Check your internet connection."
+        exit 1
     fi
 
     log_info "Latest Tor stable version: $version"
@@ -265,9 +260,9 @@ update_tor_assets() {
     set -eo pipefail
     
     if [[ $dl_status -ne 0 ]]; then
-        log_warn "Failed to download Tor bundle. Using existing assets."
+        log_error "Failed to download Tor bundle."
         rm -rf "$temp_dir"
-        return 0
+        exit 1
     fi
 
     log_info "Extracting..."
@@ -277,9 +272,9 @@ update_tor_assets() {
     set -eo pipefail
     
     if [[ $tar_status -ne 0 ]]; then
-        log_warn "Failed to extract Tor bundle. Using existing assets."
+        log_error "Failed to extract Tor bundle."
         rm -rf "$temp_dir"
-        return 0
+        exit 1
     fi
 
     log_info "Locating binaries (ignoring debug folders)..."
@@ -291,21 +286,23 @@ update_tor_assets() {
     geoip6_file=$(find "$temp_dir" -type f -name "geoip6" | head -n 1)
 
     if [[ -z "$tor_bin" || -z "$geoip_file" || -z "$geoip6_file" ]]; then
-        log_warn "Required files not found in the downloaded bundle. Using existing assets."
+        log_error "Required files not found in the downloaded bundle."
         rm -rf "$temp_dir"
-        return 0
+        exit 1
     fi
 
-    log_info "Replacing assets in $ASSETS_DIR..."
-    cp "$tor_bin" "$ASSETS_DIR/tor"
-    cp "$geoip_file" "$ASSETS_DIR/geoip"
-    cp "$geoip6_file" "$ASSETS_DIR/geoip6"
+    log_info "Moving exactly 3 files to $DIST_DIR/assets ..."
+    mkdir -p "$DIST_DIR/assets"
+    
+    cp "$tor_bin" "$DIST_DIR/assets/tor"
+    cp "$geoip_file" "$DIST_DIR/assets/geoip"
+    cp "$geoip6_file" "$DIST_DIR/assets/geoip6"
 
-    chmod +x "$ASSETS_DIR/tor"
-    chmod 644 "$ASSETS_DIR/geoip" "$ASSETS_DIR/geoip6"
+    chmod +x "$DIST_DIR/assets/tor"
+    chmod 644 "$DIST_DIR/assets/geoip" "$DIST_DIR/assets/geoip6"
 
     rm -rf "$temp_dir"
-    log_ok "Tor assets updated successfully!"
+    log_ok "Tor assets downloaded and placed successfully!"
 }
 
 # ─── Setup Build Root ──────────────────────────────────────────────────────
@@ -313,7 +310,8 @@ setup_build_root() {
     log_info "Setting up build root at: $BUILD_ROOT"
     $SUDO mkdir -p "$BUILD_ROOT"
     log_info "Copying source files to build root..."
-    $SUDO rsync -a --exclude='target' --exclude='node_modules' --exclude='dist' --exclude='.git' "$SCRIPT_DIR/" "$BUILD_ROOT/src/"
+    # Copying everything EXCEPT assets directory
+    $SUDO rsync -a --exclude='assets' --exclude='target' --exclude='node_modules' --exclude='dist' --exclude='.git' "$SCRIPT_DIR/" "$BUILD_ROOT/src/"
     $SUDO chown -R $(whoami):$(whoami) "$BUILD_ROOT" 2>/dev/null || true
     log_ok "Build root ready at: $BUILD_ROOT"
 }
@@ -324,20 +322,16 @@ log_info "Mode : ${BOLD}$BUILD_MODE${RESET}  |  Root : $SCRIPT_DIR"
 [[ -n "$TARGET" ]] && log_info "Target : $TARGET"
 log_info "Build Root : $BUILD_ROOT"
 
-# ─── Update Assets First ──────────────────────────────────────────────────────
-update_tor_assets
-
-# ─── Setup Build Environment ──────────────────────────────────────────────────
-setup_build_root
-
 # ─── Cleanup ─────────────────────────────────────────────────────────────────
 if $CLEAN_FIRST; then
     log_step "Cleaning..."
     rm -rf "$DIST_DIR"
     $SUDO rm -rf "$BUILD_ROOT"
     log_ok "Cleaned."
-    setup_build_root
 fi
+
+# ─── Setup Build Environment ──────────────────────────────────────────────────
+setup_build_root
 mkdir -p "$DIST_DIR"
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -356,20 +350,6 @@ if $BUILD_DAEMON; then
     DAEMON_BUILD_DIR="$BUILD_ROOT/src/daemon"
     [[ ! -d "$DAEMON_BUILD_DIR" ]]        && log_error "Daemon directory not found: $DAEMON_BUILD_DIR"     && exit 1
     [[ ! -f "$DAEMON_BUILD_DIR/Cargo.toml" ]] && log_error "Cargo.toml not found."              && exit 1
-
-    log_step "Checking assets in build root..."
-    ASSETS_BUILD_DIR="$BUILD_ROOT/src/assets"
-    MISSING=()
-    [[ ! -f "$ASSETS_BUILD_DIR/tor" ]] && MISSING+=("assets/tor")
-    [[ ! -f "$ASSETS_BUILD_DIR/geoip"   ]] && MISSING+=("assets/geoip")
-    [[ ! -f "$ASSETS_BUILD_DIR/geoip6"  ]] && MISSING+=("assets/geoip6")
-
-    if [[ ${#MISSING[@]} -gt 0 ]]; then
-        log_error "The following files are missing:"
-        for f in "${MISSING[@]}"; do echo -e "   ${RED}✗${RESET}  $BUILD_ROOT/src/$f"; done
-        exit 1
-    fi
-    log_ok "All assets present."
 
     log_step "Compiling Rust (${BUILD_MODE})..."
     CARGO_ARGS=("build")
@@ -440,19 +420,12 @@ if $BUILD_WEB; then
 fi
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  Phase 3 — Helper Files
+#  Phase 3 — Helper Files & Assets
 # ══════════════════════════════════════════════════════════════════════════════
-log_section "Phase 3 — Helper Files"
+log_section "Phase 3 — Helper Files & Assets"
 
-log_step "Copying assets..."
-rm -rf "$DIST_DIR/assets"
-mkdir -p "$DIST_DIR/assets"
-
-# فقط و فقط ۳ فایلی که نام بردیم اجازه انتقال به پوشه نهایی را دارند
-cp "$BUILD_ROOT/src/assets/tor" "$DIST_DIR/assets/tor"
-cp "$BUILD_ROOT/src/assets/geoip" "$DIST_DIR/assets/geoip"
-cp "$BUILD_ROOT/src/assets/geoip6" "$DIST_DIR/assets/geoip6"
-log_ok "→ dist/assets/ (only tor, geoip, geoip6 copied)"
+# اجرای تابع دانلود مستقیم به dist/assets
+download_tor_assets_to_dist
 
 BIN_FINAL="ToRouter"
 [[ "$TARGET" == *"windows"* ]] && BIN_FINAL="${BIN_FINAL}.exe"
