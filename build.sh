@@ -1,44 +1,6 @@
 #!/usr/bin/env bash
 export DEBIAN_FRONTEND=noninteractive
-# =============================================================================
-#  build.sh — Tor Router — Full Build Script
-#
-#  Expected Directory Structure:
-#
-#  tor-router/
-#  ├── build.sh
-#  ├── assets/                ← Embedded files (include_bytes!)
-#  │   ├── tor-bin
-#  │   ├── geoip
-#  │   └── geoip6
-#  ├── daemon/                ← Rust Source
-#  │   ├── Cargo.toml
-#  │   └── src/
-#  │       ├── main.rs        (include_bytes!("../../assets/tor-bin") ✓)
-#  │       ├── api.rs
-#  │       ├── cli.rs
-#  │       ├── config.rs
-#  │       ├── daemon.rs
-#  │       └── tor_process.rs
-#  └── webpanel/              ← Web Panel (Frontend)
-#      ├── app.js
-#      ├── Countries.html
-#      ├── index.html
-#      ├── package.json
-#      ├── postcss.config.js
-#      ├── style.css
-#      ├── tailwind.config.js
-#      └── src/
-#          └── input.css
-#
-#  Final Output in: ./dist/
-#    dist/<binary>    ← daemon
-#    dist/web/        ← web panel (if present)
-#    dist/run.sh      ← quick run script
-# =============================================================================
-
 set -euo pipefail
-export DEBIAN_FRONTEND=noninteractive
 
 # ─── Colors ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -50,6 +12,7 @@ DAEMON_DIR="$SCRIPT_DIR/daemon"
 WEB_DIR="$SCRIPT_DIR/webpanel"
 ASSETS_DIR="$SCRIPT_DIR/assets"
 DIST_DIR="$SCRIPT_DIR/dist"
+BUILD_ROOT="/root/tor-router-build"  # پوشه‌ی ساخت در root
 
 # ─── Defaults ────────────────────────────────────────────────────────────────
 BUILD_MODE="release"
@@ -326,18 +289,40 @@ check_tool() {
     fi
 }
 
+# ─── Setup Build Root ──────────────────────────────────────────────────────
+setup_build_root() {
+    log_info "Setting up build root at: $BUILD_ROOT"
+    
+    # Create build root directory
+    $SUDO mkdir -p "$BUILD_ROOT"
+    
+    # Copy source files to build root
+    log_info "Copying source files to build root..."
+    $SUDO rsync -a --exclude='target' --exclude='node_modules' --exclude='dist' --exclude='.git' "$SCRIPT_DIR/" "$BUILD_ROOT/src/"
+    
+    # Set proper permissions
+    $SUDO chown -R $(whoami):$(whoami) "$BUILD_ROOT" 2>/dev/null || true
+    
+    log_ok "Build root ready at: $BUILD_ROOT"
+}
+
 # ─── Start ───────────────────────────────────────────────────────────────────
 log_section "Tor Router — Build System"
 log_info "Mode : ${BOLD}$BUILD_MODE${RESET}  |  Root : $SCRIPT_DIR"
 [[ -n "$TARGET" ]] && log_info "Target : $TARGET"
+log_info "Build Root : $BUILD_ROOT"
+
+# ─── Setup Build Environment ──────────────────────────────────────────────────
+setup_build_root
 
 # ─── Cleanup ─────────────────────────────────────────────────────────────────
 if $CLEAN_FIRST; then
     log_step "Cleaning..."
     rm -rf "$DIST_DIR"
-    [[ -d "$DAEMON_DIR" ]] && (cd "$DAEMON_DIR" && cargo clean )
-    rm -rf "$WEB_DIR/dist" "$WEB_DIR/.vite" "$WEB_DIR/.next" "$WEB_DIR/build"  || true
+    $SUDO rm -rf "$BUILD_ROOT"
     log_ok "Cleaned."
+    # Recreate build root after cleanup
+    setup_build_root
 fi
 mkdir -p "$DIST_DIR"
 
@@ -362,19 +347,21 @@ if $BUILD_DAEMON; then
     # Make sure cargo is in PATH for this session
     export PATH="$HOME/.cargo/bin:$PATH"
 
-    [[ ! -d "$DAEMON_DIR" ]]        && log_error "Daemon directory not found: $DAEMON_DIR"     && exit 1
-    [[ ! -f "$DAEMON_DIR/Cargo.toml" ]] && log_error "Cargo.toml not found."              && exit 1
+    DAEMON_BUILD_DIR="$BUILD_ROOT/src/daemon"
+    [[ ! -d "$DAEMON_BUILD_DIR" ]]        && log_error "Daemon directory not found: $DAEMON_BUILD_DIR"     && exit 1
+    [[ ! -f "$DAEMON_BUILD_DIR/Cargo.toml" ]] && log_error "Cargo.toml not found."              && exit 1
 
     # ─── Check Assets ────────────────────────────────────────────────────────
     log_step "Checking assets..."
+    ASSETS_BUILD_DIR="$BUILD_ROOT/src/assets"
     MISSING=()
-    [[ ! -f "$ASSETS_DIR/tor-bin" ]] && MISSING+=("assets/tor-bin")
-    [[ ! -f "$ASSETS_DIR/geoip"   ]] && MISSING+=("assets/geoip")
-    [[ ! -f "$ASSETS_DIR/geoip6"  ]] && MISSING+=("assets/geoip6")
+    [[ ! -f "$ASSETS_BUILD_DIR/tor-bin" ]] && MISSING+=("assets/tor-bin")
+    [[ ! -f "$ASSETS_BUILD_DIR/geoip"   ]] && MISSING+=("assets/geoip")
+    [[ ! -f "$ASSETS_BUILD_DIR/geoip6"  ]] && MISSING+=("assets/geoip6")
 
     if [[ ${#MISSING[@]} -gt 0 ]]; then
         log_error "The following files are required for compilation and are missing:"
-        for f in "${MISSING[@]}"; do echo -e "   ${RED}✗${RESET}  $SCRIPT_DIR/$f"; done
+        for f in "${MISSING[@]}"; do echo -e "   ${RED}✗${RESET}  $BUILD_ROOT/src/$f"; done
         echo ""
         echo "  Solution: Place the files tor-bin, geoip, geoip6 into the assets/ folder."
         echo "  (Compile path: daemon/src/../../assets/  →  assets/)"
@@ -388,7 +375,6 @@ if $BUILD_DAEMON; then
     [[ "$BUILD_MODE" == "release" ]] && CARGO_ARGS+=("--release")
     [[ -n "$TARGET" ]]               && CARGO_ARGS+=("--target" "$TARGET")
     $VERBOSE                         && CARGO_ARGS+=("--verbose")
-    # Removed quiet flag logic
 
     if [[ -n "$TARGET" ]] && ! rustup target list --installed  | grep "$TARGET"; then
         log_warn "Target '$TARGET' is not installed — installing..."
@@ -396,11 +382,11 @@ if $BUILD_DAEMON; then
     fi
 
     T0=$(date +%s)
-    (cd "$DAEMON_DIR" && cargo "${CARGO_ARGS[@]}")
+    (cd "$DAEMON_BUILD_DIR" && cargo "${CARGO_ARGS[@]}")
     log_ok "Compiled in $(($(date +%s) - T0))s."
 
     # ─── Copy Binary ─────────────────────────────────────────────────────────
-    BIN_NAME=$(grep -m1 '^name' "$DAEMON_DIR/Cargo.toml" | sed 's/.*= *"\(.*\)"/\1/')
+    BIN_NAME=$(grep -m1 '^name' "$DAEMON_BUILD_DIR/Cargo.toml" | sed 's/.*= *"\(.*\)"/\1/')
     BIN_NAME="${BIN_NAME:-tor-router}"
     [[ "$TARGET" == *"windows"* ]] && BIN_NAME="${BIN_NAME}.exe"
 
@@ -408,9 +394,9 @@ if $BUILD_DAEMON; then
     [[ "$TARGET" == *"windows"* ]] && OUT_NAME="${OUT_NAME}.exe"
 
     if [[ -n "$TARGET" ]]; then
-        CARGO_OUT="$DAEMON_DIR/target/$TARGET/$BUILD_MODE"
+        CARGO_OUT="$DAEMON_BUILD_DIR/target/$TARGET/$BUILD_MODE"
     else
-        CARGO_OUT="$DAEMON_DIR/target/$BUILD_MODE"
+        CARGO_OUT="$DAEMON_BUILD_DIR/target/$BUILD_MODE"
     fi
 
     [[ ! -f "$CARGO_OUT/$BIN_NAME" ]] && log_error "Binary not found: $CARGO_OUT/$BIN_NAME" && exit 1
@@ -425,7 +411,8 @@ fi
 #  Phase 2 — Build Web Panel
 # ══════════════════════════════════════════════════════════════════════════════
 if $BUILD_WEB; then
-    if [[ ! -d "$WEB_DIR" || ! -f "$WEB_DIR/index.html" ]]; then
+    WEB_BUILD_DIR="$BUILD_ROOT/src/webpanel"
+    if [[ ! -d "$WEB_BUILD_DIR" || ! -f "$WEB_BUILD_DIR/index.html" ]]; then
         log_info "webpanel/ directory or index.html not found — skipped."
     else
         log_section "Phase 2 — Web Panel"
@@ -433,12 +420,12 @@ if $BUILD_WEB; then
         log_step "Building Tailwind CSS..."
         check_tool npm
         
-        if [[ -f "$WEB_DIR/package.json" ]]; then
+        if [[ -f "$WEB_BUILD_DIR/package.json" ]]; then
             # Install dependencies quietly
-            (cd "$WEB_DIR" && { npm ci || npm install; })
+            (cd "$WEB_BUILD_DIR" && { npm ci || npm install; })
             
             # Build using Vite
-            (cd "$WEB_DIR" && npm run build)
+            (cd "$WEB_BUILD_DIR" && npm run build)
             log_ok "Vite built the web panel."
         else
             log_warn "webpanel/package.json not found — skipping build."
@@ -449,7 +436,7 @@ if $BUILD_WEB; then
         rm -rf "$DIST_DIR/web"
         mkdir -p "$DIST_DIR/web"
         # Copy the contents of Vite's dist folder
-        rsync -a "$WEB_DIR/dist/" "$DIST_DIR/web/" 
+        rsync -a "$WEB_BUILD_DIR/dist/" "$DIST_DIR/web/" 
         log_ok "→ dist/web/"
     fi
 fi
@@ -461,7 +448,7 @@ log_section "Phase 3 — Helper Files"
 
 log_step "Copying assets..."
 rm -rf "$DIST_DIR/assets"
-cp -r "$SCRIPT_DIR/assets" "$DIST_DIR/assets"
+cp -r "$BUILD_ROOT/src/assets" "$DIST_DIR/assets"
 log_ok "→ dist/assets/"
 
 BIN_FINAL="ToRouter"

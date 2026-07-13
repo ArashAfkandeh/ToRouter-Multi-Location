@@ -168,22 +168,110 @@ full_install() {
     execute_installation_script "start"
 }
 
+# Update function
+update_application() {
+    print_header
+    print_colored "$GREEN" "🔄 Starting update process for ToRouter..."
+    echo ""
+    
+    check_root
+    
+    # Step 1: Download the latest version
+    print_colored "$YELLOW" "📥 Step 1/5: Downloading latest version..."
+    download_tarball "latest"
+    echo ""
+    
+    # Step 2: Stop the service
+    print_colored "$YELLOW" "⏹ Step 2/5: Stopping the service..."
+    if [ -f "$INSTALLATION_SCRIPT" ]; then
+        chmod +x "$INSTALLATION_SCRIPT"
+        "$INSTALLATION_SCRIPT" "stop"
+        if [ $? -ne 0 ]; then
+            print_colored "$RED" "✗ Warning: Failed to stop service, continuing anyway..."
+        else
+            print_colored "$GREEN" "✓ Service stopped successfully"
+        fi
+    else
+        print_colored "$YELLOW" "⚠ Installation script not found, skipping service stop"
+    fi
+    echo ""
+    
+    # Step 3: Extract and replace files
+    print_colored "$YELLOW" "📂 Step 3/5: Extracting and replacing files..."
+    
+    # Backup old directory if exists
+    if [ -d "$APP_DIR" ]; then
+        print_colored "$YELLOW" "📁 Removing old installation at $APP_DIR..."
+        rm -rf "$APP_DIR"
+    fi
+    
+    extract_tarball
+    echo ""
+    
+    # Step 4: Remove compressed file
+    print_colored "$YELLOW" "🗑 Step 4/5: Removing compressed file..."
+    cleanup_tarball
+    echo ""
+    
+    # Step 5: Start the service
+    print_colored "$YELLOW" "▶ Step 5/5: Starting the service..."
+    if [ -f "$INSTALLATION_SCRIPT" ]; then
+        chmod +x "$INSTALLATION_SCRIPT"
+        "$INSTALLATION_SCRIPT" "start"
+        if [ $? -eq 0 ]; then
+            print_colored "$GREEN" "✓ Service started successfully"
+        else
+            print_colored "$RED" "✗ Error: Failed to start service"
+            exit 1
+        fi
+    else
+        print_colored "$RED" "✗ Error: Installation script not found at $INSTALLATION_SCRIPT"
+        exit 1
+    fi
+    
+    echo ""
+    print_colored "$GREEN" "✅ Update completed successfully!"
+}
+
 # Show usage
 show_usage() {
     print_header
-    echo -e "${GREEN}Usage:${NC} $0 [${YELLOW}start${NC}|${YELLOW}stop${NC}|${YELLOW}uninstall${NC}|${YELLOW}VERSION${NC}]"
+    echo -e "${GREEN}Usage:${NC} $0 [${YELLOW}COMMAND${NC}]"
     echo ""
-    echo -e "  ${GREEN}(no args)${NC}  → Latest version"
-    echo -e "  ${GREEN}VERSION${NC}    → Specific tag (e.g. ToRouter)"
+    echo -e "${CYAN}Commands:${NC}"
+    echo -e "  ${GREEN}(no args)${NC}   → Install the latest version"
+    echo -e "  ${GREEN}VERSION${NC}     → Install a specific version (e.g. v0.1.0)"
+    echo -e "  ${GREEN}update${NC}      → Update to the latest version"
+    echo -e "  ${GREEN}start${NC}       → Start the service"
+    echo -e "  ${GREEN}stop${NC}        → Stop the service"
+    echo -e "  ${GREEN}uninstall${NC}   → Uninstall the application"
+    echo -e "  ${GREEN}help${NC}        → Show this help message"
+    echo ""
+    echo -e "${CYAN}Examples:${NC}"
+    echo -e "  $0              # Install latest version"
+    echo -e "  $0 v0.1.0       # Install version v0.1.0"
+    echo -e "  $0 update       # Update to latest version"
+    echo -e "  $0 start        # Start the service"
+    echo -e "  $0 help         # Show this help"
     echo ""
 }
 
 # ===================== MAIN =====================
+
+# If help is requested, show usage and exit
+if [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    show_usage
+    exit 0
+fi
+
 check_root
 
 case "$1" in
     start|stop|uninstall)
         execute_installation_script "$1"
+        ;;
+    update)
+        update_application
         ;;
     "")
         full_install "latest"
