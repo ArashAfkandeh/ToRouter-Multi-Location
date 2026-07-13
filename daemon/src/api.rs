@@ -56,6 +56,7 @@ pub async fn start_web_server(
     // /api/routes/restart-all will win over /api/routes/:id.
     let api_routes = Router::new()
         .route("/api/login",               post(login))
+        .route("/api/version",             get(get_version))
         .route("/api/routes",              get(list_routes).post(create_route_handler))
         .route("/api/routes/{id}/probe",    get(probe_route_handler))
         .route("/api/routes/restart-all",  post(restart_all_handler))
@@ -869,4 +870,8 @@ async fn db_set_cache(pool: &deadpool_sqlite::Pool, key: String, value: String, 
 async fn db_delete_route(pool: &deadpool_sqlite::Pool, id: i64) -> Result<(), String> {
     let conn = pool.get().await.map_err(|e| e.to_string())?;
     conn.interact(move |c| config::delete_route_conn(c, id)).await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())
+}
+
+pub async fn get_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
 }

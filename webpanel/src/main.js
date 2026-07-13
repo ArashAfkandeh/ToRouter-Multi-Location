@@ -20,6 +20,7 @@ Alpine.store('app', {
     theme: localStorage.getItem('theme') || 'dark',
     updateInterval: parseInt(localStorage.getItem('updateInterval')) || 15,
     isAuthenticated: false,
+    version: '...',
     nodes: [],
     metrics: { total: 0, healthy: 0, error: 0 },
     ws: null,
@@ -28,6 +29,19 @@ Alpine.store('app', {
         this.applyTheme();
         this.checkAuth();
         this.fetchGithubStars();
+        this.fetchVersion();
+    },
+
+    async fetchVersion() {
+        try {
+            const basePath = window.location.pathname.replace(/\/$/, '');
+            const response = await fetch(`${basePath}/api/version`);
+            if (response.ok) {
+                this.version = await response.text();
+            }
+        } catch (e) {
+            console.error('Failed to fetch version', e);
+        }
     },
 
     async fetchGithubStars() {
