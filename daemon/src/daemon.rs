@@ -29,7 +29,7 @@ lazy_static::lazy_static! {
 
 pub fn update_log_level(level: &str) {
     if let Some(handle) = LOG_RELOAD_HANDLE.read().as_ref() {
-        let filter_str = format!("tor_router={},hyper=info,reqwest=info,h2=info", level);
+        let filter_str = format!("ToRouter={},hyper=info,reqwest=info,h2=info", level);
         let new_filter = EnvFilter::new(&filter_str);
         if let Err(e) = handle.reload(new_filter) {
             tracing::error!("Failed to reload log level: {}", e);

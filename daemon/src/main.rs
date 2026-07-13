@@ -144,7 +144,7 @@ async fn main() {
             log_level = "info".to_string();
         }
         let filter = EnvFilter::try_from_default_env()
-            .unwrap_or_else(|_| EnvFilter::new(format!("tor_router={},hyper=info,reqwest=info,h2=info", log_level)));
+            .unwrap_or_else(|_| EnvFilter::new(format!("ToRouter={},hyper=info,reqwest=info,h2=info", log_level)));
             
         let (filter_layer, reload_handle) = tracing_subscriber::reload::Layer::new(filter);
         
