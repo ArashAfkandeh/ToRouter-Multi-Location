@@ -118,7 +118,7 @@ pub async fn check_and_download_updates(assets_dir: &PathBuf) {
     let files_to_check = [
         ("geoip", "https://raw.githubusercontent.com/ArashAfkandeh/ToRouter-Multi-Location/main/assets/geoip"),
         ("geoip6", "https://raw.githubusercontent.com/ArashAfkandeh/ToRouter-Multi-Location/main/assets/geoip6"),
-        ("tor-bin", "https://raw.githubusercontent.com/ArashAfkandeh/ToRouter-Multi-Location/main/assets/tor-bin"),
+        ("tor", "https://raw.githubusercontent.com/ArashAfkandeh/ToRouter-Multi-Location/main/assets/tor"),
     ];
 
     let client = match reqwest::Client::builder().timeout(Duration::from_secs(60)).build() {
@@ -150,7 +150,7 @@ pub async fn check_and_download_updates(assets_dir: &PathBuf) {
                         if std::fs::write(&path, &bytes).is_ok() {
                             tracing::info!("Successfully updated asset {}", filename);
                             #[cfg(unix)]
-                            if *filename == "tor-bin" {
+                            if *filename == "tor" {
                                 if let Ok(metadata) = std::fs::metadata(&path) {
                                     use std::os::unix::fs::PermissionsExt;
                                     let mut perms = metadata.permissions();

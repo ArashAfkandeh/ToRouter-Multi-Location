@@ -14,7 +14,7 @@ use crate::daemon::NOT_CONNECTED;
 use crate::router::{Backend, Slot};
 
 pub fn prepare_assets(assets_dir: &Path) -> std::io::Result<PathBuf> {
-    let tor_bin_path = assets_dir.join("tor-bin");
+    let tor_bin_path = assets_dir.join("tor");
     
     #[cfg(unix)]
     {
