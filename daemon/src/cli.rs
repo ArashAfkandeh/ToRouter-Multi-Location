@@ -102,7 +102,7 @@ pub async fn run_cli(api_url_base: &str) {
 
         clear_screen();
         println!("\x1b[1m\x1b[36m╔════════════════════════════════════════════════════════╗\x1b[0m");
-        println!("\x1b[1m\x1b[36m║               🚀 TOR ROUTER CLI                        ║\x1b[0m");
+        println!("\x1b[1m\x1b[36m║               🚀 ToRouter CLI                        ║\x1b[0m");
         println!("\x1b[1m\x1b[36m╚════════════════════════════════════════════════════════╝\x1b[0m\n");
 
         println!("  \x1b[36m1.\x1b[0m 📊 View Live Status");
