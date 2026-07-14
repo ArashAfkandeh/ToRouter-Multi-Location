@@ -20,7 +20,7 @@
 
 # 🎥 نمای وب پنل مدیریت:
 <p align="center">
-  <img src="./webpanel/webpanel.gif" width="800">
+  <img src="./preview/webpanel.gif" width="800">
 </p>
 
 ## ⌨️ منوی تعاملی CLI
@@ -33,7 +33,7 @@
 - **تنظیمات:** تغییر پورت‌های Web و API، تغییر رمز عبور پنل وب و نمایش سریع اطلاعات لازم برای ورود به پنل.
 
 <p align="center">
-  <img src="./assets/cli_menu.png" width="600" alt="نمای منوی CLI">
+  <img src="./preview/cli_menu.png" width="600" alt="نمای منوی CLI">
 </p>
 
 ## شروع سریع
