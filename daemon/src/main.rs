@@ -12,7 +12,7 @@ use crate::cli::run_cli;
 use tracing_subscriber::EnvFilter;
 
 // Default API Bind — on all interfaces
-const DEFAULT_API_BIND: &str = "0.0.0.0:9090";
+const DEFAULT_API_BIND: &str = "0.0.0.0:3000";
 
 fn setup_auto_symlink() {
     if env::consts::OS == "windows" { return; }
@@ -28,25 +28,40 @@ fn setup_auto_symlink() {
     }
 }
 
-/// Creates db path next to binary (tor_db.sqlite)
+/// Creates db path next to binary (ToRouter.sqlite)
 fn db_path_next_to_exe() -> String {
     env::current_exe()
         .ok()
-        .and_then(|p| p.parent().map(|d| d.join("tor_db.sqlite")))
-        .unwrap_or_else(|| PathBuf::from("tor_db.sqlite"))
+        .and_then(|p| p.parent().map(|d| d.join("ToRouter.sqlite")))
+        .unwrap_or_else(|| PathBuf::from("ToRouter.sqlite"))
         .to_string_lossy()
         .into_owned()
 }
 
 fn print_usage(name: &str) {
-    println!("\x1b[1m\x1b[36mToRouter\x1b[0m");
+    println!("\x1b[1m\x1b[36m╔════════════════════════════════════════════════════════╗\x1b[0m");
+    println!("\x1b[1m\x1b[36m║                  🚀 ToRouter Help                      ║\x1b[0m");
+    println!("\x1b[1m\x1b[36m╚════════════════════════════════════════════════════════╝\x1b[0m");
+    println!("  \x1b[32mToRouter\x1b[0m is a powerful Tor proxy manager that allows you to route traffic");
+    println!("  through multiple countries using a single server.");
     println!();
-    println!("  \x1b[36m{} --run\x1b[0m                     Run daemon without web panel", name);
-    println!("  \x1b[36m{} --web-dir <path>\x1b[0m          Run daemon with web panel", name);
-    println!("  \x1b[36m{}\x1b[0m (no arguments)           Run CLI", name);
+    println!("\x1b[1m\x1b[33m▶ USAGE:\x1b[0m");
+    println!("  \x1b[36m{}\x1b[0m [OPTIONS]", name);
     println!();
-    println!("Database will be created next to binary: tor_db.sqlite");
-    println!("API starts on {}", DEFAULT_API_BIND);
+    println!("\x1b[1m\x1b[33m▶ OPTIONS:\x1b[0m");
+    println!("  \x1b[36m--run\x1b[0m                     Start the ToRouter background daemon (API & Service)");
+    println!("  \x1b[36m--web-dir <path>\x1b[0m          Start the daemon and serve the Web Panel from <path>");
+    println!("  \x1b[36m--version, -v\x1b[0m             Show version and developer information");
+    println!("  \x1b[36m--help, -h\x1b[0m                Show this help message");
+    println!();
+    println!("\x1b[1m\x1b[33m▶ CLI INTERFACE:\x1b[0m");
+    println!("  Run without any arguments (or use shortcut \x1b[36mtor-p\x1b[0m) to open the interactive CLI.");
+    println!("  Example: \x1b[36m{}\x1b[0m", name);
+    println!();
+    println!("\x1b[1m\x1b[33m▶ NOTES:\x1b[0m");
+    println!("  - Database: \x1b[90mCreated next to the binary (ToRouter.sqlite)\x1b[0m");
+    println!("  - Default API: \x1b[90m{}\x1b[0m", DEFAULT_API_BIND);
+    println!();
 }
 
 #[tokio::main]
@@ -107,6 +122,12 @@ async fn main() {
             }
             "--help" | "-h" => {
                 print_usage(&args[0]);
+                return;
+            }
+            "--version" | "-v" | "version" => {
+                println!("\x1b[1m\x1b[36mToRouter v{}\x1b[0m", env!("CARGO_PKG_VERSION"));
+                println!("\x1b[33mGitHub:\x1b[0m   https://github.com/ArashAfkandeh/ToRouter-Multi-Location");
+                println!("\x1b[34mTelegram:\x1b[0m t.me/ArashAfkandeh");
                 return;
             }
             unknown => {

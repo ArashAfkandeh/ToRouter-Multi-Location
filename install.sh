@@ -204,7 +204,7 @@ update_application() {
 		print_colored "$YELLOW" "📁 Backing up database files..."
 		rm -rf /tmp/tor_db_backup
 		mkdir -p /tmp/tor_db_backup
-		cp "$APP_DIR/dist/tor_db.sqlite"* /tmp/tor_db_backup/ 2>/dev/null || true
+		cp "$APP_DIR/dist/ToRouter.sqlite"* /tmp/tor_db_backup/ 2>/dev/null || true
 		
 		print_colored "$YELLOW" "📁 Removing old installation at $APP_DIR..."
 		rm -rf "$APP_DIR"
@@ -216,7 +216,7 @@ update_application() {
 	# Restore database
 	if [ -d /tmp/tor_db_backup ]; then
 		print_colored "$YELLOW" "📁 Restoring database files..."
-		cp /tmp/tor_db_backup/tor_db.sqlite* "$APP_DIR/dist/" 2>/dev/null || true
+		cp /tmp/tor_db_backup/ToRouter.sqlite* "$APP_DIR/dist/" 2>/dev/null || true
 		rm -rf /tmp/tor_db_backup
 	fi
         

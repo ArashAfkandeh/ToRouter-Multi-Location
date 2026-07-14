@@ -47,9 +47,9 @@ struct RouteApiItem {
 async fn auto_login(api_url: &str) -> Option<String> {
     let exe_path = std::env::current_exe().unwrap_or_default();
     let dir = exe_path.parent().unwrap_or(std::path::Path::new("."));
-    let db_path = dir.join("tor_db.sqlite");
+    let db_path = dir.join("ToRouter.sqlite");
     
-    if let Ok(settings) = crate::config::load_settings(db_path.to_str().unwrap_or("tor_db.sqlite")) {
+    if let Ok(settings) = crate::config::load_settings(db_path.to_str().unwrap_or("ToRouter.sqlite")) {
         let payload = serde_json::json!({
             "username": settings.admin_username,
             "password": settings.admin_password
@@ -77,8 +77,8 @@ pub async fn run_cli(api_url_base: &str) {
 
     let exe_path = std::env::current_exe().unwrap_or_default();
     let dir = exe_path.parent().unwrap_or(std::path::Path::new("."));
-    let db_path = dir.join("tor_db.sqlite");
-    if let Ok(settings) = crate::config::load_settings(db_path.to_str().unwrap_or("tor_db.sqlite")) {
+    let db_path = dir.join("ToRouter.sqlite");
+    if let Ok(settings) = crate::config::load_settings(db_path.to_str().unwrap_or("ToRouter.sqlite")) {
         let has_domain = !settings.domain.as_deref().unwrap_or("").trim().is_empty();
         let scheme = if settings.use_custom_cert || has_domain { "https" } else { "http" };
         let mut connect_addr = settings.web_bind_address.clone();
@@ -243,9 +243,9 @@ async fn display_panel_info() {
     println!("\x1b[1m\x1b[36m═══ ℹ️ Panel Info & Credentials ═══\x1b[0m\n");
     let exe_path = std::env::current_exe().unwrap_or_default();
     let dir = exe_path.parent().unwrap_or(std::path::Path::new("."));
-    let db_path = dir.join("tor_db.sqlite");
+    let db_path = dir.join("ToRouter.sqlite");
     
-    if let Ok(settings) = crate::config::load_settings(db_path.to_str().unwrap_or("tor_db.sqlite")) {
+    if let Ok(settings) = crate::config::load_settings(db_path.to_str().unwrap_or("ToRouter.sqlite")) {
         let has_domain = !settings.domain.as_deref().unwrap_or("").trim().is_empty();
         let scheme = if settings.use_custom_cert || has_domain { "https" } else { "http" };
         let mut bind = settings.web_bind_address.clone();
@@ -852,7 +852,7 @@ async fn update_downgrade() {
     let exe_path = std::env::current_exe().unwrap_or_default();
     let current_dir = exe_path.parent().unwrap_or(std::path::Path::new("."));
     
-    let db_files = ["tor_db.sqlite", "tor_db.sqlite-shm", "tor_db.sqlite-wal"];
+    let db_files = ["ToRouter.sqlite", "ToRouter.sqlite-shm", "ToRouter.sqlite-wal"];
     for file in &db_files {
         let src = current_dir.join(file);
         let dst = format!("/tmp/{}", file);

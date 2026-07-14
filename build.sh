@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DAEMON_DIR="$SCRIPT_DIR/daemon"
 WEB_DIR="$SCRIPT_DIR/webpanel"
 DIST_DIR="$SCRIPT_DIR/dist"
-BUILD_ROOT="/root/tor-router-build"  # پوشه‌ی ساخت در root
+BUILD_ROOT="/root/ToRouter-Build"  # پوشه‌ی ساخت در root
 
 # ─── Defaults ────────────────────────────────────────────────────────────────
 BUILD_MODE="release"
