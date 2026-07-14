@@ -68,12 +68,12 @@ export const translations = {
         total_nodes: "Total Nodes"
     },
     fa: {
-        login_title: "کنترل پنل تور روتر",
+        login_title: "کنترل پنل توروتر",
         login_desc: "برای مدیریت نودهای خصوصی وارد شوید.",
         login_user: "نام کاربری",
         login_pass: "رمز عبور",
         login_btn: "ورود",
-        nav_title: "تور روتر",
+        nav_title: "توروتر",
         nav_logout: "خروج",
         dash_title: "نودهای خروجی",
         dash_desc: "نودهای مسیریابی تور را مدیریت و مشاهده کنید.",

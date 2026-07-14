@@ -100,20 +100,44 @@ pub async fn run_cli(api_url_base: &str) {
             session_cookie = auto_login(&api_url).await;
         }
 
+        let srv_status = get_service_status().await;
+        let is_active = srv_status.contains("Active") && !srv_status.contains("Inactive");
+
         clear_screen();
         println!("\x1b[1m\x1b[36m╔════════════════════════════════════════════════════════╗\x1b[0m");
-        println!("\x1b[1m\x1b[36m║               🚀 ToRouter CLI                        ║\x1b[0m");
-        println!("\x1b[1m\x1b[36m╚════════════════════════════════════════════════════════╝\x1b[0m\n");
+        println!("\x1b[1m\x1b[36m║                  🚀 ToRouter CLI                       ║\x1b[0m");
+        println!("\x1b[1m\x1b[36m╚════════════════════════════════════════════════════════╝\x1b[0m");
+        println!("  Service Status: {}\n", srv_status);
 
-        println!("  \x1b[36m1.\x1b[0m 📊 View Live Status");
-        println!("  \x1b[36m2.\x1b[0m 🔄 Restart a Route");
-        println!("  \x1b[36m3.\x1b[0m ⚙️ Restart ALL Routes");
-        println!("  \x1b[36m4.\x1b[0m 🌐 Change Web/API Ports");
-        println!("  \x1b[36m5.\x1b[0m ➕ Create Route (API)");
-        println!("  \x1b[36m6.\x1b[0m ✏️ Edit Route (API)");
-        println!("  \x1b[36m7.\x1b[0m 🗑️ Delete Route (API)");
-        println!("  \x1b[36m8.\x1b[0m 🔐 Update Settings & Credentials");
-        println!("  \x1b[36m9.\x1b[0m ℹ️ View Panel Info & Credentials");
+        if is_active {
+            println!("\x1b[1m\x1b[33m▶ ROUTING MANAGEMENT\x1b[0m");
+            println!("  \x1b[36m1.\x1b[0m 📊 View Live Status");
+            println!("  \x1b[36m2.\x1b[0m 🔄 Restart a Route");
+            println!("  \x1b[36m3.\x1b[0m ⚙️ Restart ALL Routes");
+            println!("  \x1b[36m4.\x1b[0m ➕ Create Route");
+            println!("  \x1b[36m5.\x1b[0m ✏️ Edit Route");
+            println!("  \x1b[36m6.\x1b[0m 🗑️ Delete Route\n");
+            
+            println!("\x1b[1m\x1b[33m▶ SETTINGS & INFO\x1b[0m");
+            println!("  \x1b[36m7.\x1b[0m 🌐 Change Web/API Ports");
+            println!("  \x1b[36m8.\x1b[0m 🔐 Update Settings & Credentials");
+            println!("  \x1b[36m9.\x1b[0m ℹ️ View Panel Info & Credentials\n");
+        } else {
+            println!("\x1b[1m\x1b[31m▶ ROUTING MANAGEMENT & SETTINGS\x1b[0m");
+            println!("  \x1b[90m[ API options are disabled while service is inactive ]\x1b[0m");
+            println!("  \x1b[36m9.\x1b[0m ℹ️ View Panel Info & Credentials\n");
+        }
+
+        println!("\x1b[1m\x1b[33m▶ SYSTEM & SERVICE\x1b[0m");
+        if !is_active {
+            println!("  \x1b[36m10.\x1b[0m 🚀 Start Service");
+        } else {
+            println!("  \x1b[36m11.\x1b[0m 🛑 Stop Service");
+            println!("  \x1b[36m12.\x1b[0m 🔄 Restart Service");
+        }
+        println!("  \x1b[36m13.\x1b[0m 🔄 Upgrade/Downgrade");
+        println!("  \x1b[36m14.\x1b[0m 🗑️ Uninstall\n");
+
         println!("  \x1b[36m0.\x1b[0m ❌ Exit\n");
         print!("👉 Select an option: ");
         io::stdout().flush().unwrap();
@@ -121,37 +145,42 @@ pub async fn run_cli(api_url_base: &str) {
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
         let choice = input.trim();
+        
+        if choice.is_empty() {
+            println!("\n👋 Exiting CLI.");
+            return;
+        }
 
         match choice {
-            "1" => {
+            "1" if is_active => {
                 view_live_status_loop(&api_url, session_cookie.as_deref()).await;
                 pause();
             }
-            "2" => {
+            "2" if is_active => {
                 restart_route(&api_url).await;
                 pause();
             }
-            "3" => {
+            "3" if is_active => {
                 restart_all(&api_url).await;
                 pause();
             }
-            "4" => {
-                change_ports_with_session(&api_url, session_cookie.as_deref()).await;
-                pause();
-            }
-            "5" => {
+            "4" if is_active => {
                 create_route_cli(&api_url, session_cookie.as_deref()).await;
                 pause();
             }
-            "6" => {
+            "5" if is_active => {
                 edit_route_cli(&api_url, session_cookie.as_deref()).await;
                 pause();
             }
-            "7" => {
+            "6" if is_active => {
                 delete_route_cli(&api_url, session_cookie.as_deref()).await;
                 pause();
             }
-            "8" => {
+            "7" if is_active => {
+                change_ports_with_session(&api_url, session_cookie.as_deref()).await;
+                pause();
+            }
+            "8" if is_active => {
                 update_admin_credentials(&api_url, session_cookie.as_deref()).await;
                 session_cookie = None;
                 pause();
@@ -160,12 +189,34 @@ pub async fn run_cli(api_url_base: &str) {
                 display_panel_info().await;
                 pause();
             }
+            "10" => {
+                start_service().await;
+                pause();
+            }
+            "11" => {
+                stop_service().await;
+                pause();
+            }
+            "12" => {
+                restart_systemd_service().await;
+                pause();
+            }
+            "13" => {
+                update_downgrade().await;
+                pause();
+            }
+            "14" => {
+                if uninstall_app().await {
+                    return; // exit the CLI
+                }
+                pause();
+            }
             "0" => {
                 println!("\n👋 Exiting CLI.");
                 return;
             }
             _ => {
-                println!("\x1b[31m⚠️ Invalid option!\x1b[0m");
+                println!("\x1b[31m⚠️ Invalid option or service inactive!\x1b[0m");
                 tokio::time::sleep(Duration::from_secs(1)).await;
             }
         }
@@ -591,4 +642,308 @@ async fn update_admin_credentials(api_url: &str, session: Option<&str>) {
         Ok(r) => println!("\n\x1b[31m❌ Update failed: {}\x1b[0m", r.status()),
         Err(_) => println!("\n\x1b[31m❌ Request failed\x1b[0m"),
     }
+}
+
+
+async fn start_service() {
+    println!("Creating ToRouter.service...");
+    
+    let exe_path = std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("/opt/ToRouter-Multi-Location/dist/ToRouter"));
+    let exe_dir = exe_path.parent().unwrap_or(std::path::Path::new("/opt/ToRouter-Multi-Location/dist"));
+    let project_dir = exe_dir.parent().unwrap_or(std::path::Path::new("/opt/ToRouter-Multi-Location"));
+    
+    let exe_str = exe_path.to_string_lossy();
+    let project_dir_str = project_dir.to_string_lossy();
+    let web_dir_str = exe_dir.join("web").to_string_lossy().to_string();
+
+    let service_content = format!(r#"[Unit]
+Description=ToRouter Multi-Location Tor Manager
+Documentation=https://github.com/ArashAfkandeh/ToRouter-Multi-Location
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+WorkingDirectory={project_dir_str}
+
+ExecStart={exe_str} --web-dir {web_dir_str}
+
+Restart=always
+RestartSec=5
+
+KillSignal=SIGINT
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=torouter
+
+LimitNOFILE=65536
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+
+ReadWritePaths={project_dir_str}
+
+[Install]
+WantedBy=multi-user.target
+"#);
+
+    if let Err(e) = std::fs::write("/etc/systemd/system/ToRouter.service", service_content) {
+        println!("\n\x1b[31m❌ Failed to write service file: {}. Try running with sudo.\x1b[0m", e);
+        return;
+    }
+
+    println!("Reloading systemd daemon...");
+    let _ = std::process::Command::new("systemctl").arg("daemon-reload").status();
+
+    println!("Enabling ToRouter service...");
+    let _ = std::process::Command::new("systemctl").arg("enable").arg("ToRouter.service").status();
+
+    println!("Starting ToRouter service...");
+    let status = std::process::Command::new("systemctl").arg("start").arg("ToRouter.service").status();
+    
+    match status {
+        Ok(s) if s.success() => println!("\n\x1b[32m✅ Service started successfully!\x1b[0m"),
+        _ => println!("\n\x1b[31m❌ Failed to start service.\x1b[0m"),
+    }
+}
+
+async fn stop_service() {
+    println!("Stopping ToRouter service...");
+    let status = std::process::Command::new("systemctl").arg("stop").arg("ToRouter.service").status();
+    
+    match status {
+        Ok(s) if s.success() => {
+            println!("\n\x1b[32m✅ Service stopped successfully!\x1b[0m");
+            println!("Disabling ToRouter service...");
+            let _ = std::process::Command::new("systemctl").arg("disable").arg("ToRouter.service").status();
+        },
+        _ => println!("\n\x1b[31m❌ Failed to stop service.\x1b[0m"),
+    }
+}
+
+async fn get_service_status() -> String {
+    let output = std::process::Command::new("systemctl")
+        .arg("is-active")
+        .arg("ToRouter.service")
+        .output();
+    match output {
+        Ok(out) => {
+            let status = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if status == "active" {
+                "\x1b[32mActive\x1b[0m".to_string()
+            } else {
+                "\x1b[31mInactive\x1b[0m".to_string()
+            }
+        }
+        Err(_) => "\x1b[31mInactive\x1b[0m".to_string(),
+    }
+}
+
+async fn restart_systemd_service() {
+    println!("Restarting ToRouter service...");
+    let status = std::process::Command::new("systemctl").arg("restart").arg("ToRouter.service").status();
+    
+    match status {
+        Ok(s) if s.success() => println!("\n\x1b[32m✅ Service restarted successfully!\x1b[0m"),
+        _ => println!("\n\x1b[31m❌ Failed to restart service.\x1b[0m"),
+    }
+}
+
+async fn update_downgrade() {
+    println!("\nFetching releases from GitHub...");
+    let client = reqwest::Client::builder()
+        .user_agent("ToRouter-CLI")
+        .build()
+        .unwrap();
+
+    let url = "https://api.github.com/repos/ArashAfkandeh/ToRouter-Multi-Location/releases";
+    let res = client.get(url).send().await;
+
+    let releases: Vec<serde_json::Value> = match res {
+        Ok(r) => r.json().await.unwrap_or_else(|_| vec![]),
+        Err(_) => {
+            println!("\x1b[31m❌ Failed to fetch releases from GitHub.\x1b[0m");
+            return;
+        }
+    };
+
+    if releases.is_empty() {
+        println!("\x1b[31m❌ No releases found.\x1b[0m");
+        return;
+    }
+
+    let limit = std::cmp::min(10, releases.len());
+    let recent_releases = &releases[0..limit];
+
+    println!("\n\x1b[1m\x1b[36mAvailable Releases:\x1b[0m");
+    for (i, release) in recent_releases.iter().enumerate() {
+        let tag_name = release["tag_name"].as_str().unwrap_or("Unknown");
+        let name = release["name"].as_str().unwrap_or("Unknown");
+        println!("  \x1b[36m{}.\x1b[0m {} - {}", i + 1, tag_name, name);
+    }
+    println!("  \x1b[36m0.\x1b[0m Cancel");
+
+    print!("\n👉 Select a release to install (0-{}): ", limit);
+    use std::io::Write;
+    std::io::stdout().flush().unwrap();
+
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input).unwrap();
+    let choice: usize = match input.trim().parse() {
+        Ok(n) => n,
+        Err(_) => {
+            println!("Invalid selection.");
+            return;
+        }
+    };
+
+    if choice == 0 || choice > limit {
+        println!("Cancelled.");
+        return;
+    }
+
+    let selected_release = &recent_releases[choice - 1];
+    let tag_name = selected_release["tag_name"].as_str().unwrap_or("Unknown");
+    
+    // Find tar.gz asset
+    let assets = selected_release["assets"].as_array().unwrap();
+    let mut download_url = String::new();
+    for asset in assets {
+        if let Some(name) = asset["name"].as_str() {
+            if name.ends_with(".tar.gz") {
+                download_url = asset["browser_download_url"].as_str().unwrap_or("").to_string();
+                break;
+            }
+        }
+    }
+
+    if download_url.is_empty() {
+        println!("\x1b[31m❌ Could not find a .tar.gz asset for release {}.\x1b[0m", tag_name);
+        return;
+    }
+
+    println!("\nDownloading {}...", tag_name);
+    let tmp_file = "/tmp/torouter_update.tar.gz";
+    
+    // 1. Download
+    let status = std::process::Command::new("curl")
+        .arg("-L")
+        .arg("-o")
+        .arg(tmp_file)
+        .arg(&download_url)
+        .status();
+
+    if !status.map(|s| s.success()).unwrap_or(false) {
+        println!("\x1b[31m❌ Failed to download the release.\x1b[0m");
+        return;
+    }
+
+    // 2. Stop service
+    println!("Stopping ToRouter service...");
+    let _ = std::process::Command::new("systemctl").arg("stop").arg("ToRouter.service").status();
+
+    // 3. Backup DB
+    println!("Backing up database files...");
+    let exe_path = std::env::current_exe().unwrap_or_default();
+    let current_dir = exe_path.parent().unwrap_or(std::path::Path::new("."));
+    
+    let db_files = ["tor_db.sqlite", "tor_db.sqlite-shm", "tor_db.sqlite-wal"];
+    for file in &db_files {
+        let src = current_dir.join(file);
+        let dst = format!("/tmp/{}", file);
+        if src.exists() {
+            let _ = std::fs::copy(&src, &dst);
+        }
+    }
+
+    // 4. Extract
+    let parent_of_project = current_dir.parent().and_then(|p| p.parent()).unwrap_or(std::path::Path::new("/opt"));
+    println!("Extracting to {} ...", parent_of_project.display());
+    let status = std::process::Command::new("tar")
+        .arg("-xzf")
+        .arg(tmp_file)
+        .arg("-C")
+        .arg(parent_of_project)
+        .arg("--unlink-first")
+        .status();
+
+    if !status.map(|s| s.success()).unwrap_or(false) {
+        println!("\x1b[31m❌ Failed to extract the release.\x1b[0m");
+    }
+
+    // 5. Restore DB
+    println!("Restoring database files...");
+    for file in &db_files {
+        let src = format!("/tmp/{}", file);
+        let dst = current_dir.join(file);
+        if std::path::Path::new(&src).exists() {
+            let _ = std::fs::copy(&src, &dst);
+            let _ = std::fs::remove_file(&src); // cleanup backup
+        }
+    }
+
+    // 6. Start service
+    println!("Starting ToRouter service...");
+    let status = std::process::Command::new("systemctl").arg("start").arg("ToRouter.service").status();
+    if !status.map(|s| s.success()).unwrap_or(false) {
+        println!("\x1b[31m⚠️ Service might not have started successfully.\x1b[0m");
+    }
+
+    // 7. Cleanup tmp file
+    let _ = std::fs::remove_file(tmp_file);
+
+    println!("\n\x1b[32m✅ Upgrade/Downgrade to {} completed successfully!\x1b[0m", tag_name);
+}
+
+async fn uninstall_app() -> bool {
+    print!("\nAre you sure you want to uninstall ToRouter-Multi-Location? [y/N]: ");
+    use std::io::Write;
+    std::io::stdout().flush().unwrap();
+
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input).unwrap();
+    let choice = input.trim().to_lowercase();
+
+    if choice != "y" && choice != "yes" {
+        println!("Uninstall cancelled.");
+        return false;
+    }
+
+    println!("\n\x1b[31mUninstalling ToRouter-Multi-Location...\x1b[0m");
+
+    // 1. Stop the service
+    println!("Stopping ToRouter service...");
+    let _ = std::process::Command::new("systemctl").arg("stop").arg("ToRouter.service").status();
+    let _ = std::process::Command::new("systemctl").arg("disable").arg("ToRouter.service").status();
+    let _ = std::fs::remove_file("/etc/systemd/system/ToRouter.service");
+    let _ = std::process::Command::new("systemctl").arg("daemon-reload").status();
+
+    // 2. Remove application files
+    println!("Removing application files...");
+    let exe_path = std::env::current_exe().unwrap_or_default();
+    if let Some(exe_dir) = exe_path.parent() {
+        if let Some(project_dir) = exe_dir.parent() {
+            let p_str = project_dir.to_string_lossy();
+            if p_str.contains("ToRouter") || p_str.contains("torouter") {
+                let _ = std::fs::remove_dir_all(project_dir);
+            } else {
+                println!("\x1b[31m⚠️ Safety check failed: project directory {} doesn't seem to be ToRouter.\x1b[0m", p_str);
+            }
+        }
+    }
+
+    // 3. Remove symlink
+    println!("Removing symlink...");
+    let _ = std::fs::remove_file("/usr/local/bin/tor-p");
+
+    println!("\n\x1b[32mUninstall completed successfully!\x1b[0m");
+    println!("If you wish to reinstall, you can run the following command:\n");
+    println!("\x1b[32mcurl -s https://raw.githubusercontent.com/ArashAfkandeh/ToRouter-Multi-Location/main/install.sh | sudo bash\x1b[0m\n");
+
+    true // Return true to signal the loop to exit
 }

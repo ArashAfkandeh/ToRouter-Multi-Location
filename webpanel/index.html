@@ -34,6 +34,7 @@
     class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 antialiased font-sans"
   >
     <div id="app" class="min-h-screen flex flex-col" x-cloak>
+
       <!-- Auth View -->
       <main
         id="view-login"
@@ -294,7 +295,7 @@
                     background-clip: text;
                   "
                 ></h1>
-                <span x-text="'v' + $store.app.version" class="text-xs font-semibold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/30 px-1.5 py-0.5 rounded border border-brand-200 dark:border-brand-800"></span>
+                <span x-text="'v' + $store.app.version" class="text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-300 dark:border-slate-600 shadow-sm"></span>
               </div>
               <p
                 x-text="$store.app.t('nav_subtitle')"

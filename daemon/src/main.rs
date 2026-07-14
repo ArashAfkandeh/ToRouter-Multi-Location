@@ -4,16 +4,12 @@ mod config;
 mod daemon;
 mod tor_process;
 mod router;
-
 use std::env;
 use std::fs;
 use std::path::PathBuf;
 use crate::daemon::run_daemon;
 use crate::cli::run_cli;
 use tracing_subscriber::EnvFilter;
-
-// Remove include_bytes! variables
-// Paths relative to daemon/src/main.rs → daemon/../../assets/
 
 // Default API Bind — on all interfaces
 const DEFAULT_API_BIND: &str = "0.0.0.0:9090";
