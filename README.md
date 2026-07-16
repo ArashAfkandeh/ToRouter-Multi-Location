@@ -45,40 +45,12 @@
 curl -s https://raw.githubusercontent.com/ArashAfkandeh/ToRouter-Multi-Location/main/install.sh | sudo bash
 ```
 
-### به‌روزرسانی برنامه
-```bash
-curl -s https://raw.githubusercontent.com/ArashAfkandeh/ToRouter-Multi-Location/main/install.sh | sudo bash -s -- update
-```
-
 ### نصب نسخه خاص
 ```bash
 curl -s https://raw.githubusercontent.com/ArashAfkandeh/ToRouter-Multi-Location/main/install.sh | sudo bash -s -- --version v0.1.0
 ```
 
-### شروع سرویس
-```bash
-curl -s https://raw.githubusercontent.com/ArashAfkandeh/ToRouter-Multi-Location/main/install.sh | sudo bash -s -- start
-```
-
-### توقف سرویس
-```bash
-curl -s https://raw.githubusercontent.com/ArashAfkandeh/ToRouter-Multi-Location/main/install.sh | sudo bash -s -- stop
-```
-
-### حذف کامل
-```bash
-curl -s https://raw.githubusercontent.com/ArashAfkandeh/ToRouter-Multi-Location/main/install.sh | sudo bash -s -- uninstall
-```
-
-### مشاهده راهنما
-```bash
-curl -s https://raw.githubusercontent.com/ArashAfkandeh/ToRouter-Multi-Location/main/install.sh | sudo bash -s -- --help
-```
-
-### ترکیب آرگومانها (مثال: نصب نسخه خاص و شروع)
-```bash
-curl -s https://raw.githubusercontent.com/ArashAfkandeh/ToRouter-Multi-Location/main/install.sh | sudo bash -s -- --version v0.1.0 start
-```
+> **نکته:** برای توقف سرویس، حذف کامل برنامه یا به‌روزرسانی به نسخه‌های جدید، پس از نصب از دستور تعاملی `tor-p` در خط فرمان استفاده کنید.
 
 ### اجرای دستی (برای توسعه‌دهندگان)
 
