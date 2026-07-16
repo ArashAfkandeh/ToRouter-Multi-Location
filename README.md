@@ -40,7 +40,7 @@
 
 برای نصب، راه‌اندازی و مدیریت برنامه می‌توانید از اسکریپت نصب استفاده کنید:
 
-### نصب کامل آخرین نسخه (بدون آرگومان)
+### نصب آخرین نسخه
 ```bash
 curl -s https://raw.githubusercontent.com/ArashAfkandeh/ToRouter-Multi-Location/main/install.sh | sudo bash
 ```
