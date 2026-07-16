@@ -71,6 +71,11 @@ async fn main() {
     let args: Vec<String> = env::args().collect();
     let db_path  = db_path_next_to_exe();
 
+    // Always attempt to repair the database index at startup to fix any malformed issues (e.g. after a bad restore or crash)
+    if let Ok(conn) = rusqlite::Connection::open(&db_path) {
+        let _ = conn.execute("REINDEX", []);
+    }
+
     // Load saved settings (if DB exists) to determine bind address/port.
     // Fall back to defaults when settings cannot be read.
     let settings = match config::load_settings(&db_path) {

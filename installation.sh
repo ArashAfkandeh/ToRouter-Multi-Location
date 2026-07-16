@@ -50,6 +50,94 @@ check_service_file() {
     fi
 }
 
+# Function to check and configure web panel port
+configure_web_port() {
+    local DEFAULT_PORT=3000
+    local DB_PATH="/opt/ToRouter-Multi-Location/dist/ToRouter.sqlite"
+    local CURRENT_PORT=$DEFAULT_PORT
+
+    # Get current port from DB if exists
+    if [ -f "$DB_PATH" ]; then
+        if command -v sqlite3 >/dev/null 2>&1; then
+            local db_port=$(sqlite3 "$DB_PATH" "SELECT value FROM settings WHERE key='web_panel_port';" 2>/dev/null)
+            if [ -n "$db_port" ]; then
+                CURRENT_PORT=$db_port
+            fi
+        fi
+    fi
+
+    local PORT=$CURRENT_PORT
+    
+    echo ""
+    print_colored "$YELLOW" "🔍 Checking web panel port ($PORT)..."
+    
+    while true; do
+        # Professional check if port is in use (more precise matching)
+        if ss -tuln | awk '{print $5}' | grep -E -q ":${PORT}$"; then
+            print_colored "$RED" "⚠️  Port ${PORT} is currently in use by another application."
+            
+            # Interactive prompt for new port
+            read -p "$(echo -e "${CYAN}👉 Please enter a new free port for the web panel [1024-65535]: ${NC}")" NEW_PORT
+            
+            # Enhanced validation
+            if [[ -z "$NEW_PORT" ]]; then
+                print_colored "$RED" "❌ Port cannot be empty. Please try again."
+                continue
+            fi
+            
+            if ! [[ "$NEW_PORT" =~ ^[0-9]+$ ]]; then
+                print_colored "$RED" "❌ Invalid input. Please enter a numerical value."
+                continue
+            fi
+            
+            if [ "$NEW_PORT" -lt 1 ] || [ "$NEW_PORT" -gt 65535 ]; then
+                print_colored "$RED" "❌ Port out of range. Must be between 1 and 65535."
+                continue
+            fi
+            
+            if [ "$NEW_PORT" -lt 1024 ]; then
+                print_colored "$YELLOW" "⚠️  Warning: Ports below 1024 are privileged."
+            fi
+            
+            PORT=$NEW_PORT
+            print_colored "$YELLOW" "🔍 Checking new port ($PORT)..."
+        else
+            print_colored "$GREEN" "✓ Port $PORT is free and ready to use."
+            break
+        fi
+    done
+
+    # If the port changed or DB doesn't exist, we must update/create it
+    if [ "$PORT" != "$CURRENT_PORT" ] || [ ! -f "$DB_PATH" ]; then
+        if ! command -v sqlite3 >/dev/null 2>&1; then
+            print_colored "$YELLOW" "📦 Installing sqlite3 for database configuration..."
+            sudo apt-get update >/dev/null 2>&1
+            sudo apt-get install -y sqlite3 >/dev/null 2>&1
+        fi
+        
+        # Create DB directory if not exists
+        mkdir -p "$(dirname "$DB_PATH")"
+        
+        # Set port in DB
+        sqlite3 "$DB_PATH" <<EOF
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+INSERT OR REPLACE INTO settings (key, value) VALUES ('web_panel_port', '$PORT');
+INSERT OR REPLACE INTO settings (key, value) VALUES ('api_port', '$PORT');
+EOF
+        print_colored "$GREEN" "✓ Web panel port set to $PORT in database."
+    fi
+    
+    # Configure UFW
+    if command -v ufw >/dev/null 2>&1; then
+        local ufw_status=$(sudo ufw status | grep -i "Status: active")
+        if [ -n "$ufw_status" ]; then
+            print_colored "$YELLOW" "🔐 Configuring UFW firewall for port $PORT..."
+            sudo ufw allow $PORT/tcp >/dev/null 2>&1
+            print_colored "$GREEN" "✓ Port $PORT allowed in UFW"
+        fi
+    fi
+}
+
 # Function to start the service
 start_service() {
     clear
@@ -57,6 +145,9 @@ start_service() {
     print_colored "$CYAN" "║          🚀 Starting ToRouter Service                       ║"
     print_colored "$CYAN" "╚═══════════════════════════════════════════════════════════════╝"
     echo ""
+    
+    # Configure Web Port
+    configure_web_port
     
     # Install required packages
     print_colored "$YELLOW" "📦 Installing required packages (libssl-dev, libevent-dev)..."

@@ -15,17 +15,78 @@ window.nodesService = nodesService;
 window.settingsService = settingsService;
 window.logsService = logsService;
 
+window.formatLog = function(line) {
+    let html = line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    html = html.replace(/\x1b\[32m/g, '<span class="text-emerald-400">')
+               .replace(/\x1b\[34m/g, '<span class="text-blue-400">')
+               .replace(/\x1b\[33m/g, '<span class="text-yellow-400">')
+               .replace(/\x1b\[31m/g, '<span class="text-red-400">')
+               .replace(/\x1b\[36m/g, '<span class="text-cyan-400">')
+               .replace(/\x1b\[1m/g, '<span class="font-bold">')
+               .replace(/\x1b\[2m/g, '<span class="text-slate-500">')
+               .replace(/\x1b\[0m/g, '</span>')
+               .replace(/\x1b\[[0-9;]*m/g, '');
+    return html;
+};
+window.backupDatabase = function() {
+    let basePath = window.location.pathname;
+    if (basePath.endsWith('.html') || basePath.endsWith('.htm')) basePath = basePath.substring(0, basePath.lastIndexOf('/'));
+    if (basePath.endsWith('/')) basePath = basePath.substring(0, basePath.length - 1);
+    window.location.href = `${basePath}/api/backup`;
+};
+
+window.handleRestoreFile = async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm('Are you sure you want to restore the database? This will overwrite your current settings and routes, and restart the ToRouter service.')) {
+        e.target.value = '';
+        return;
+    }
+    
+    Alpine.store('toast').show('Uploading database...', 'info');
+    
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        let basePath = window.location.pathname;
+        if (basePath.endsWith('.html') || basePath.endsWith('.htm')) basePath = basePath.substring(0, basePath.lastIndexOf('/'));
+        if (basePath.endsWith('/')) basePath = basePath.substring(0, basePath.length - 1);
+        
+        const res = await fetch(`${basePath}/api/restore`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (res.ok) {
+            Alpine.store('toast').show('Restore successful! Restarting daemon, please wait...', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 5000);
+        } else {
+            const text = await res.text();
+            Alpine.store('toast').show('Restore failed: ' + text, 'error');
+        }
+    } catch (error) {
+        Alpine.store('toast').show('Network error during restore', 'error');
+    }
+    
+    e.target.value = '';
+};
+
 Alpine.store('app', {
     lang: localStorage.getItem('lang') || 'en',
     theme: localStorage.getItem('theme') || 'dark',
     updateInterval: parseInt(localStorage.getItem('updateInterval')) || 15,
     isAuthenticated: false,
+    isInitializing: true,
     version: '...',
     nodes: [],
     metrics: { total: 0, healthy: 0, error: 0 },
     ws: null,
-    
+
     init() {
+        console.log('[DEBUG] App init started, isInitializing:', this.isInitializing);
         this.applyTheme();
         this.checkAuth();
         this.fetchGithubStars();
@@ -63,11 +124,11 @@ Alpine.store('app', {
         let basePath = window.location.pathname;
         if (basePath.endsWith('.html') || basePath.endsWith('.htm')) basePath = basePath.substring(0, basePath.lastIndexOf('/'));
         if (basePath.endsWith('/')) basePath = basePath.substring(0, basePath.length - 1);
-        
+
         const wsUrl = `${protocol}//${window.location.host}${basePath}/api/ws`;
-        
+
         this.ws = new WebSocket(wsUrl);
-        
+
         this.ws.onmessage = (event) => {
             try {
                 const payload = JSON.parse(event.data);
@@ -76,7 +137,7 @@ Alpine.store('app', {
                     if (this.nodes) {
                         this.nodes.forEach(n => { localNodesMap[n.id] = n; });
                     }
-                    
+
                     this.nodes = payload.routes.map(serverNode => {
                         const localNode = localNodesMap[serverNode.id];
                         if (localNode && localNode._frontendProbed) {
@@ -87,7 +148,7 @@ Alpine.store('app', {
                         }
                         return serverNode;
                     });
-                    
+
                     this.metrics.total = this.nodes.length;
                     this.metrics.healthy = this.nodes.filter(n => n.status === 'healthy').length;
                     this.metrics.error = this.nodes.filter(n => n.status === 'error').length;
@@ -110,23 +171,23 @@ Alpine.store('app', {
             }
         };
     },
-    
+
     t(key) {
         return t(key, this.lang);
     },
-    
+
     toggleLang() {
         this.lang = this.lang === 'en' ? 'fa' : 'en';
         localStorage.setItem('lang', this.lang);
         document.body.setAttribute('dir', this.lang === 'fa' ? 'rtl' : 'ltr');
     },
-    
+
     toggleTheme() {
         this.theme = this.theme === 'dark' ? 'light' : 'dark';
         localStorage.setItem('theme', this.theme);
         this.applyTheme();
     },
-    
+
     applyTheme() {
         if (this.theme === 'dark') {
             document.documentElement.classList.add('dark');
@@ -134,17 +195,21 @@ Alpine.store('app', {
             document.documentElement.classList.remove('dark');
         }
     },
-    
+
     async checkAuth() {
+        console.log('[DEBUG] checkAuth started');
         const isAuth = await auth.check();
+        console.log('[DEBUG] Auth check result:', isAuth);
         this.isAuthenticated = isAuth;
+        this.isInitializing = false;
+        console.log('[DEBUG] isInitializing set to false');
         if (isAuth) {
             this.fetchNodes();
             this.connectWs();
             this.startPeriodicFetch();
         }
     },
-    
+
     async login(username, password, errorCallback) {
         const res = await auth.login(username, password);
         if (res.error) {
@@ -156,7 +221,7 @@ Alpine.store('app', {
             this.startPeriodicFetch();
         }
     },
-    
+
     logout() {
         auth.logout();
         this.isAuthenticated = false;
@@ -170,13 +235,13 @@ Alpine.store('app', {
             this.fetchInterval = null;
         }
     },
-    
+
     setUpdateInterval(seconds) {
         this.updateInterval = seconds;
         localStorage.setItem('updateInterval', seconds);
         this.startPeriodicFetch();
     },
-    
+
     startPeriodicFetch() {
         if (this.fetchInterval) clearInterval(this.fetchInterval);
         this.fetchInterval = setInterval(() => {
@@ -185,7 +250,7 @@ Alpine.store('app', {
             }
         }, this.updateInterval * 1000);
     },
-    
+
     async fetchNodes() {
         const res = await nodesService.fetchNodes();
         if (!res.error && res.data) {
@@ -206,7 +271,7 @@ Alpine.store('app', {
 
     formatTime(ts) {
         if (!ts) return '-';
-        return new Date(Number(ts)).toLocaleTimeString([], {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        return new Date(Number(ts)).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
     },
 
     async restartNode(id) {

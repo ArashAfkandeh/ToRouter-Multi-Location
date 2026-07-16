@@ -250,7 +250,20 @@ async fn display_panel_info() {
         let scheme = if settings.use_custom_cert || has_domain { "https" } else { "http" };
         let mut bind = settings.web_bind_address.clone();
         if bind == "0.0.0.0" {
-            bind = "127.0.0.1".to_string(); // Or try to determine public IP
+            if let Ok(res) = HTTP_CLIENT.get("https://api.ipify.org").send().await {
+                if let Ok(ip) = res.text().await {
+                    let ip = ip.trim().to_string();
+                    if !ip.is_empty() {
+                        bind = ip;
+                    } else {
+                        bind = "127.0.0.1".to_string();
+                    }
+                } else {
+                    bind = "127.0.0.1".to_string();
+                }
+            } else {
+                bind = "127.0.0.1".to_string();
+            }
         }
         let host = if has_domain { settings.domain.clone().unwrap() } else { bind };
         let port = settings.web_panel_port;
@@ -646,11 +659,65 @@ async fn update_admin_credentials(api_url: &str, session: Option<&str>) {
 
 
 async fn start_service() {
-    println!("Creating ToRouter.service...");
-    
     let exe_path = std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("/opt/ToRouter-Multi-Location/dist/ToRouter"));
     let exe_dir = exe_path.parent().unwrap_or(std::path::Path::new("/opt/ToRouter-Multi-Location/dist"));
     let project_dir = exe_dir.parent().unwrap_or(std::path::Path::new("/opt/ToRouter-Multi-Location"));
+    let db_path = exe_dir.join("ToRouter.sqlite");
+
+    let db_path_str = db_path.to_str().unwrap_or("ToRouter.sqlite");
+
+    let mut settings = match crate::config::load_settings(db_path_str) {
+        Ok(s) => s,
+        Err(_) => crate::config::Settings::default(),
+    };
+
+    let mut current_port = settings.web_panel_port;
+    let bind_addr = if settings.web_bind_address.is_empty() { "0.0.0.0".to_string() } else { settings.web_bind_address.clone() };
+    
+    loop {
+        if std::net::TcpListener::bind((bind_addr.as_str(), current_port)).is_ok() {
+            break;
+        }
+        
+        println!("\n\x1b[31m⚠️  Port {} is currently in use by another application.\x1b[0m", current_port);
+        print!("\x1b[36m👉 Please enter a new free port for the web panel [1024-65535]: \x1b[0m");
+        use std::io::Write;
+        std::io::stdout().flush().unwrap();
+        
+        let mut new_port_str = String::new();
+        std::io::stdin().read_line(&mut new_port_str).unwrap();
+        
+        if let Ok(p) = new_port_str.trim().parse::<u16>() {
+            if p > 0 {
+                current_port = p;
+            } else {
+                println!("\x1b[31m❌ Invalid port number.\x1b[0m");
+            }
+        } else {
+            println!("\x1b[31m❌ Invalid input.\x1b[0m");
+        }
+    }
+    
+    if current_port != settings.web_panel_port || crate::config::load_settings(db_path_str).is_err() {
+        settings.web_panel_port = current_port;
+        settings.api_port = current_port;
+        let _ = crate::config::init_db(db_path_str);
+        let _ = crate::config::save_settings(db_path_str, &settings);
+        println!("\x1b[32m✅ Port updated to {} in database.\x1b[0m", current_port);
+
+        // Allow port in UFW
+        if let Ok(status) = std::process::Command::new("ufw").arg("status").output() {
+            if String::from_utf8_lossy(&status.stdout).to_lowercase().contains("active") {
+                let _ = std::process::Command::new("ufw")
+                    .arg("allow")
+                    .arg(format!("{}/tcp", current_port))
+                    .status();
+                println!("\x1b[32m✅ Port {} allowed in UFW firewall.\x1b[0m", current_port);
+            }
+        }
+    }
+
+    println!("\nCreating ToRouter.service...");
     
     let exe_str = exe_path.to_string_lossy();
     let project_dir_str = project_dir.to_string_lossy();
@@ -707,7 +774,10 @@ WantedBy=multi-user.target
     let status = std::process::Command::new("systemctl").arg("start").arg("ToRouter.service").status();
     
     match status {
-        Ok(s) if s.success() => println!("\n\x1b[32m✅ Service started successfully!\x1b[0m"),
+        Ok(s) if s.success() => {
+            println!("\n\x1b[32m✅ Service started successfully!\x1b[0m");
+            display_panel_info().await;
+        },
         _ => println!("\n\x1b[31m❌ Failed to start service.\x1b[0m"),
     }
 }

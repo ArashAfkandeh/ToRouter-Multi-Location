@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use axum::{
-    extract::{Path, State, Query, ws::{WebSocketUpgrade, WebSocket, Message}},
+    extract::{Path, State, Query, Multipart, ws::{WebSocketUpgrade, WebSocket, Message}},
     http::{header, HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{get, post, put},
@@ -66,6 +66,8 @@ pub async fn start_web_server(
         .route("/api/countries",           get(get_countries))
         .route("/api/logs",                get(get_logs))
         .route("/api/ws",                  get(ws_handler))
+        .route("/api/backup",              get(backup_db_handler))
+        .route("/api/restore",             post(restore_db_handler))
         // Legacy CLI endpoint – keep backward-compat
         .route("/restart",                 post(legacy_restart))
         .route("/status",                  get(legacy_status))
@@ -106,12 +108,16 @@ pub async fn start_web_server(
             nested = nested.fallback_service(not_found);
         }
         
-        let app = Router::new().nest(&base_path, nested);
+        let bp_no_slash = base_path.clone();
+        let bp_slash = format!("{}/", base_path);
         
-        app.route("/", axum::routing::get(move || {
-            let bp = format!("{}/", base_path);
-            async move { axum::response::Redirect::temporary(&bp) }
-        }))
+        let bp_redirect = bp_no_slash.clone();
+        Router::new()
+            .route(&bp_no_slash, axum::routing::get(move || {
+                let redirect_to = format!("{}/", bp_redirect);
+                async move { axum::response::Redirect::temporary(&redirect_to) }
+            }))
+            .nest(&bp_slash, nested)
     };
 
     let addr: std::net::SocketAddr = match bind_addr.parse() {
@@ -417,13 +423,27 @@ async fn create_route_handler(
 ) -> impl IntoResponse {
     if let Err(e) = require_auth(&state, &headers) { return e.into_response(); }
     let mut route: RouteConfig = body.into();
+
+    if std::net::TcpListener::bind((route.bind_address.as_deref().unwrap_or("0.0.0.0"), route.input_port)).is_err() {
+        return (StatusCode::BAD_REQUEST, "Port is already in use by another process").into_response();
+    }
+    
+    if let Ok(output) = std::process::Command::new("which").arg("ufw").output() {
+        if output.status.success() {
+            let _ = std::process::Command::new("ufw")
+                .arg("allow")
+                .arg(format!("{}/tcp", route.input_port))
+                .status();
+        }
+    }
+
     match db_create_route(&state.pool, route.clone()).await {
         Ok(id) => {
             route.id = id;
             state.shared_config.write().routes.push(route);
             Json(serde_json::json!({ "id": id.to_string(), "ok": true })).into_response()
         },
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e}))).into_response(),
     }
 }
 
@@ -441,15 +461,29 @@ async fn update_route_handler(
 
     let mut route: RouteConfig = body.into();
     
-    // Preserve old restart_trigger
+    // Preserve old restart_trigger and check port
     if let Ok(old_r) = db_get_route_by_id(&state.pool, id).await {
+        if old_r.input_port != route.input_port {
+            if std::net::TcpListener::bind((route.bind_address.as_deref().unwrap_or("0.0.0.0"), route.input_port)).is_err() {
+                return (StatusCode::BAD_REQUEST, "Port is already in use by another process").into_response();
+            }
+        }
         route.restart_trigger = old_r.restart_trigger;
         route.tor_ip = old_r.tor_ip;
         route.last_checked_at = old_r.last_checked_at;
     }
 
+    if let Ok(output) = std::process::Command::new("which").arg("ufw").output() {
+        if output.status.success() {
+            let _ = std::process::Command::new("ufw")
+                .arg("allow")
+                .arg(format!("{}/tcp", route.input_port))
+                .status();
+        }
+    }
+
     if let Err(e) = db_update_route(&state.pool, id, route.clone()).await {
-        return (StatusCode::INTERNAL_SERVER_ERROR, e).into_response();
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e}))).into_response();
     }
     
     route.id = id;
@@ -479,7 +513,10 @@ async fn delete_route_handler(
             state.shared_config.write().routes.retain(|r| r.id != id);
             Json(serde_json::json!({ "ok": true })).into_response()
         },
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e).into_response(),
+        Err(e) => {
+            error!("Failed to delete route from DB: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e}))).into_response()
+        }
     }
 }
 
@@ -877,4 +914,80 @@ async fn db_delete_route(pool: &deadpool_sqlite::Pool, id: i64) -> Result<(), St
 
 pub async fn get_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
+}
+
+fn get_db_path() -> std::path::PathBuf {
+    std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("ToRouter.sqlite")
+}
+
+async fn backup_db_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let db_path = get_db_path();
+
+    // Checkpoint the WAL file so all data is in the main database file before backing up
+    if let Ok(conn) = state.pool.get().await {
+        let _ = conn.interact(|c| c.execute("PRAGMA wal_checkpoint(TRUNCATE)", [])).await;
+    }
+
+    match std::fs::read(&db_path) {
+        Ok(data) => {
+            let mut headers = HeaderMap::new();
+            headers.insert(header::CONTENT_TYPE, "application/octet-stream".parse().unwrap());
+            headers.insert(header::CONTENT_DISPOSITION, "attachment; filename=\"ToRouter.sqlite\"".parse().unwrap());
+            (StatusCode::OK, headers, data).into_response()
+        }
+        Err(e) => {
+            error!("Failed to read database for backup: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": format!("Failed to read database file: {}", e)}))).into_response()
+        }
+    }
+}
+
+async fn restore_db_handler(mut multipart: Multipart) -> impl IntoResponse {
+    let mut db_data = None;
+    while let Ok(Some(field)) = multipart.next_field().await {
+        if field.name() == Some("file") {
+            if let Ok(data) = field.bytes().await {
+                db_data = Some(data);
+                break;
+            }
+        }
+    }
+
+    if let Some(data) = db_data {
+        let db_path = get_db_path();
+        let tmp_path = db_path.with_extension("sqlite.upload");
+        
+        if let Err(e) = std::fs::write(&tmp_path, data) {
+            error!("Failed to write uploaded db to tmp file: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to save uploaded database").into_response();
+        }
+
+        if let Err(e) = std::fs::rename(&tmp_path, &db_path) {
+            error!("Failed to overwrite db file: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Failed to overwrite database"}))).into_response();
+        }
+
+        // IMPORTANT: In WAL mode, if we replace the main file we MUST also delete the -wal and -shm files.
+        // Otherwise the database image will be malformed.
+        let wal_path = db_path.with_extension("sqlite-wal");
+        let shm_path = db_path.with_extension("sqlite-shm");
+        let _ = std::fs::remove_file(wal_path);
+        let _ = std::fs::remove_file(shm_path);
+
+        info!("Database restored successfully! The application will now restart.");
+        
+        // Spawn a delayed task to exit so that we can return the HTTP response first
+        tokio::spawn(async {
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            std::process::exit(0);
+        });
+
+        Json(serde_json::json!({ "ok": true })).into_response()
+    } else {
+        (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "No file uploaded"}))).into_response()
+    }
 }
