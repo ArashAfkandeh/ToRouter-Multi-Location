@@ -29,7 +29,7 @@ print_colored() {
 print_header() {
     clear
     print_colored "$CYAN" "╔═══════════════════════════════════════════════════════════════╗"
-    print_colored "$CYAN" "║          📦 ToRouter Installation Manager v2.3               ║"
+    print_colored "$CYAN" "║           📦 ToRouter Installation Manager v2.3               ║"
     print_colored "$CYAN" "╚═══════════════════════════════════════════════════════════════╝"
     echo ""
 }
@@ -168,102 +168,19 @@ full_install() {
     execute_installation_script "start"
 }
 
-# Update function
-update_application() {
-    print_header
-    print_colored "$GREEN" "🔄 Starting update process for ToRouter..."
-    echo ""
-    
-    check_root
-    
-    # Step 1: Download the latest version
-    print_colored "$YELLOW" "📥 Step 1/5: Downloading latest version..."
-    download_tarball "latest"
-    echo ""
-    
-    # Step 2: Stop the service
-    print_colored "$YELLOW" "⏹ Step 2/5: Stopping the service..."
-    if [ -f "$INSTALLATION_SCRIPT" ]; then
-        chmod +x "$INSTALLATION_SCRIPT"
-        "$INSTALLATION_SCRIPT" "stop"
-        if [ $? -ne 0 ]; then
-            print_colored "$RED" "✗ Warning: Failed to stop service, continuing anyway..."
-        else
-            print_colored "$GREEN" "✓ Service stopped successfully"
-        fi
-    else
-        print_colored "$YELLOW" "⚠ Installation script not found, skipping service stop"
-    fi
-    echo ""
-    
-    # Step 3: Extract and replace files
-    print_colored "$YELLOW" "📂 Step 3/5: Extracting and replacing files..."
-
-	# Backup old directory if exists
-	if [ -d "$APP_DIR" ]; then
-		print_colored "$YELLOW" "📁 Backing up database files..."
-		rm -rf /tmp/tor_db_backup
-		mkdir -p /tmp/tor_db_backup
-		cp "$APP_DIR/dist/ToRouter.sqlite"* /tmp/tor_db_backup/ 2>/dev/null || true
-		
-		print_colored "$YELLOW" "📁 Removing old installation at $APP_DIR..."
-		rm -rf "$APP_DIR"
-	fi
-	
-	extract_tarball
-	echo ""
-	
-	# Restore database
-	if [ -d /tmp/tor_db_backup ]; then
-		print_colored "$YELLOW" "📁 Restoring database files..."
-		cp /tmp/tor_db_backup/ToRouter.sqlite* "$APP_DIR/dist/" 2>/dev/null || true
-		rm -rf /tmp/tor_db_backup
-	fi
-        
-    # Step 4: Remove compressed file
-    print_colored "$YELLOW" "🗑 Step 4/5: Removing compressed file..."
-    cleanup_tarball
-    echo ""
-    
-    # Step 5: Start the service
-    print_colored "$YELLOW" "▶ Step 5/5: Starting the service..."
-    if [ -f "$INSTALLATION_SCRIPT" ]; then
-        chmod +x "$INSTALLATION_SCRIPT"
-        "$INSTALLATION_SCRIPT" "start"
-        if [ $? -eq 0 ]; then
-            print_colored "$GREEN" "✓ Service started successfully"
-        else
-            print_colored "$RED" "✗ Error: Failed to start service"
-            exit 1
-        fi
-    else
-        print_colored "$RED" "✗ Error: Installation script not found at $INSTALLATION_SCRIPT"
-        exit 1
-    fi
-    
-    echo ""
-    print_colored "$GREEN" "✅ Update completed successfully!"
-}
-
 # Show usage
 show_usage() {
     print_header
-    echo -e "${GREEN}Usage:${NC} $0 [${YELLOW}COMMAND${NC}]"
+    echo -e "${GREEN}Usage:${NC} $0 [${YELLOW}VERSION${NC}]"
     echo ""
     echo -e "${CYAN}Commands:${NC}"
     echo -e "  ${GREEN}(no args)${NC}   → Install the latest version"
     echo -e "  ${GREEN}VERSION${NC}     → Install a specific version (e.g. v0.1.0)"
-    echo -e "  ${GREEN}update${NC}      → Update to the latest version"
-    echo -e "  ${GREEN}start${NC}       → Start the service"
-    echo -e "  ${GREEN}stop${NC}        → Stop the service"
-    echo -e "  ${GREEN}uninstall${NC}   → Uninstall the application"
     echo -e "  ${GREEN}help${NC}        → Show this help message"
     echo ""
     echo -e "${CYAN}Examples:${NC}"
     echo -e "  $0              # Install latest version"
     echo -e "  $0 v0.1.0       # Install version v0.1.0"
-    echo -e "  $0 update       # Update to latest version"
-    echo -e "  $0 start        # Start the service"
     echo -e "  $0 help         # Show this help"
     echo ""
 }
@@ -278,19 +195,11 @@ fi
 
 check_root
 
-case "$1" in
-    start|stop|uninstall)
-        execute_installation_script "$1"
-        ;;
-    update)
-        update_application
-        ;;
-    "")
-        full_install "latest"
-        ;;
-    *)
-        full_install "$1"
-        ;;
-esac
+# Removed the "start" case - now only installation is supported
+if [ -z "$1" ]; then
+    full_install "latest"
+else
+    full_install "$1"
+fi
 
 exit 0

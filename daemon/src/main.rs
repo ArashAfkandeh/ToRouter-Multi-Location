@@ -74,7 +74,12 @@ async fn main() {
     // Load saved settings (if DB exists) to determine bind address/port.
     // Fall back to defaults when settings cannot be read.
     let settings = match config::load_settings(&db_path) {
-        Ok(s) => s,
+        Ok(mut s) => {
+            if s.web_bind_address.trim().is_empty() {
+                s.web_bind_address = "0.0.0.0".to_string();
+            }
+            s
+        },
         Err(_) => config::Settings::default(),
     };
 

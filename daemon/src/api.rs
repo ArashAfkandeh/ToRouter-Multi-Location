@@ -560,7 +560,10 @@ async fn save_settings_handler(
     if let Err(e) = require_auth(&state, &headers) { return e.into_response(); }
     let mut settings = state.shared_settings.read().clone();
     if let Some(p) = update.web_panel_port   { settings.web_panel_port   = p; }
-    if let Some(a) = update.web_bind_address { settings.web_bind_address = a; }
+    if let Some(a) = update.web_bind_address { 
+        let a = a.trim();
+        settings.web_bind_address = if a.is_empty() { "0.0.0.0".to_string() } else { a.to_string() };
+    }
     if let Some(p) = update.api_port         { settings.api_port         = p; }
     if let Some(u) = update.admin_username   { settings.admin_username   = u; }
     if let Some(pw) = update.admin_password  { settings.admin_password   = pw; }

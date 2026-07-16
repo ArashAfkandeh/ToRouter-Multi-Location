@@ -307,6 +307,7 @@ download_tor_assets_to_dist() {
 
 # ─── Setup Build Root ──────────────────────────────────────────────────────
 setup_build_root() {
+    check_tool rsync
     log_info "Setting up build root at: $BUILD_ROOT"
     $SUDO mkdir -p "$BUILD_ROOT"
     log_info "Copying source files to build root..."

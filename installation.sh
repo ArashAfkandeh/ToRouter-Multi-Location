@@ -108,74 +108,23 @@ start_service() {
     print_colored "$CYAN" "╚═══════════════════════════════════════════════════════════════╝"
     sudo systemctl status ${SERVICE_NAME}.service --no-pager
     
+    # Create symlink for CLI tool
+    echo ""
+    print_colored "$YELLOW" "🔗 Creating symlink for CLI tool..."
+    local SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+    local BINARY_PATH="${SCRIPT_DIR}/dist/ToRouter"
+    
+    if [ -f "$BINARY_PATH" ]; then
+        sudo ln -sf "$BINARY_PATH" /usr/local/bin/tor-p
+        print_colored "$GREEN" "✓ Symlink created successfully: tor-p -> $BINARY_PATH"
+    else
+        print_colored "$YELLOW" "⚠️  Binary not found at $BINARY_PATH. CLI symlink not created."
+    fi
+    
     # Show useful commands
     print_commands
     
     print_colored "$GREEN" "\n✅ Service installation and startup completed successfully!"
-}
-
-# Function to stop and remove service
-stop_service() {
-    clear
-    print_colored "$CYAN" "╔═══════════════════════════════════════════════════════════════╗"
-    print_colored "$CYAN" "║          ⏹ Stopping ToRouter Service                        ║"
-    print_colored "$CYAN" "╚═══════════════════════════════════════════════════════════════╝"
-    echo ""
-    
-    # Check if service exists
-    if [ -f "$SERVICE_DEST" ]; then
-        # Check if service is running
-        if is_service_active; then
-            print_colored "$YELLOW" "⏹ Stopping service..."
-            sudo systemctl stop ${SERVICE_NAME}.service
-            print_colored "$GREEN" "✓ Service stopped successfully"
-        else
-            print_colored "$YELLOW" "ℹ Service is not running"
-        fi
-        
-        # Disable service
-        print_colored "$YELLOW" "🔗 Disabling service..."
-        sudo systemctl disable ${SERVICE_NAME}.service
-        print_colored "$GREEN" "✓ Service disabled successfully"
-        
-        # Remove service file
-        print_colored "$YELLOW" "🗑 Removing service file..."
-        sudo rm -f "$SERVICE_DEST"
-        print_colored "$GREEN" "✓ Service file removed successfully"
-        
-        # Reload systemd
-        print_colored "$YELLOW" "🔄 Reloading systemd..."
-        sudo systemctl daemon-reload
-        print_colored "$GREEN" "✓ Systemd reloaded successfully"
-        
-        print_colored "$GREEN" "\n✅ Service stopped and removed successfully!"
-    else
-        print_colored "$YELLOW" "⚠️  Service file not found. Already removed or never installed."
-    fi
-}
-
-# Function to uninstall completely
-uninstall_service() {
-    clear
-    print_colored "$CYAN" "╔═══════════════════════════════════════════════════════════════╗"
-    print_colored "$CYAN" "║          🗑 Uninstalling ToRouter Completely                 ║"
-    print_colored "$CYAN" "╚═══════════════════════════════════════════════════════════════╝"
-    echo ""
-    
-    # Stop and remove service
-    stop_service
-    
-    # Remove application directory
-    echo ""
-    print_colored "$YELLOW" "🗑 Removing application directory..."
-    if [ -d "$APP_DIR" ]; then
-        sudo rm -rf "$APP_DIR"
-        print_colored "$GREEN" "✓ Application directory removed successfully!"
-    else
-        print_colored "$YELLOW" "⚠️  Application directory not found at $APP_DIR"
-    fi
-    
-    print_colored "$GREEN" "\n✅ Uninstallation completed successfully!"
 }
 
 # Function to show usage
@@ -184,12 +133,10 @@ show_usage() {
     echo -e "${CYAN}║          📦 ToRouter Installation Manager                    ║${NC}"
     echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "${GREEN}Usage:${NC} $0 {${YELLOW}start${NC}|${YELLOW}stop${NC}|${YELLOW}uninstall${NC}}"
+    echo -e "${GREEN}Usage:${NC} $0 {${YELLOW}start${NC}}"
     echo ""
     echo -e "${BLUE}Commands:${NC}"
     echo -e "  ${GREEN}start${NC}     - Install and start the ToRouter service"
-    echo -e "  ${YELLOW}stop${NC}      - Stop and remove the ToRouter service"
-    echo -e "  ${RED}uninstall${NC}  - Stop service and completely remove application"
     echo ""
     echo -e "${MAGENTA}Example:${NC}"
     echo -e "  ${YELLOW}sudo $0 start${NC}"
@@ -200,12 +147,6 @@ show_usage() {
 case "$1" in
     start)
         start_service
-        ;;
-    stop)
-        stop_service
-        ;;
-    uninstall)
-        uninstall_service
         ;;
     *)
         show_usage

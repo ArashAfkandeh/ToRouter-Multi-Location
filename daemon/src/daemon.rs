@@ -256,7 +256,10 @@ pub async fn run_daemon(db_path: &str, api_bind: &str, web_dir: Option<String>) 
     
     let shared_config = Arc::new(RwLock::new(initial_config));
 
-    let initial_settings = crate::api::db_load_settings(&db_pool).await.unwrap_or_default();
+    let mut initial_settings = crate::api::db_load_settings(&db_pool).await.unwrap_or_default();
+    if initial_settings.web_bind_address.trim().is_empty() {
+        initial_settings.web_bind_address = "0.0.0.0".to_string();
+    }
     let shared_settings = Arc::new(RwLock::new(initial_settings));
 
     let mut server_handle = axum_server::Handle::<std::net::SocketAddr>::new();
