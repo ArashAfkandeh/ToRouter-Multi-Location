@@ -1132,13 +1132,13 @@
               class="p-4 overflow-y-auto no-scrollbar"
               x-data="{
                         form: {
-                            web_bind_address: '', web_panel_port: '', log_level: 'info', admin_username: '', admin_password: '', domain: '', acme_email: '', custom_cert: false, ssl_cert_path: '', ssl_key_path: ''
+                            web_bind_address: '0.0.0.0', web_panel_port: '', log_level: 'info', admin_username: '', admin_password: '', domain: '', acme_email: '', custom_cert: false, ssl_cert_path: '', ssl_key_path: ''
                         },
                         showPass: false,
                         async init() {
                             const res = await window.settingsService.fetchSettings();
                             if (!res.error && res.data) {
-                                this.form.web_bind_address = res.data.web_bind_address || '';
+                                this.form.web_bind_address = res.data.web_bind_address || '0.0.0.0';
                                 this.form.web_panel_port = res.data.web_panel_port || '';
                                 this.form.log_level = res.data.log_level || 'info';
                                 this.form.admin_username = res.data.admin_username || '';
@@ -1150,6 +1150,9 @@
                             }
                         },
                         async save() {
+                            if (!this.form.web_bind_address || this.form.web_bind_address.trim() === '') {
+                                this.form.web_bind_address = '0.0.0.0';
+                            }
                             const res = await window.settingsService.saveSettings(this.form);
                             if (res.error) $store.toast.show(res.error, 'error');
                             else {
