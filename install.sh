@@ -107,14 +107,6 @@ cleanup_tarball() {
     print_colored "$GREEN" "✓ Tarball removed"
 }
 
-# Function to install dependencies
-install_dependencies() {
-    print_colored "$YELLOW" "📦 Installing dependencies..."
-    apt update
-    apt install -y curl
-    print_colored "$GREEN" "✓ Dependencies installed successfully"
-}
-
 # Function to execute installation script
 execute_installation_script() {
     local command=$1
