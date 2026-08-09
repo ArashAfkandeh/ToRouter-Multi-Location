@@ -54,7 +54,7 @@ get_asset_name() {
     local asset=$(curl -s "${GITHUB_API}/tags/${tag}" | grep -o '"name": "[^"]*tar.gz"' | head -1 | sed -E 's/.*"name": "([^"]+)".*/\1/')
     if [ -z "$asset" ]; then
         # Fallback
-        asset="ToRouter-Multi-Location-v0.1.0.tar.gz"
+        asset="ToRouter-Multi-Location-v1.1.2.tar.gz"
     fi
     echo "$asset"
 }
@@ -149,7 +149,6 @@ full_install() {
     echo ""
     
     check_root
-    install_dependencies
     echo ""
     download_tarball "$version"
     echo ""
