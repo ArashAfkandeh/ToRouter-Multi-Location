@@ -723,6 +723,38 @@ async fn start_service() {
     let project_dir_str = project_dir.to_string_lossy();
     let web_dir_str = exe_dir.join("web").to_string_lossy().to_string();
 
+    println!("Creating torouter system user...");
+    let user_exists = std::process::Command::new("id")
+        .args(["-u", "torouter"])
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false);
+    if !user_exists {
+        let status = std::process::Command::new("useradd")
+            .args([
+                "--system",
+                "--home-dir",
+                "/var/lib/torouter",
+                "--create-home",
+                "--shell",
+                "/usr/sbin/nologin",
+                "torouter",
+            ])
+            .status();
+        if !matches!(status, Ok(status) if status.success()) {
+            println!("\n\x1b[31m❌ Failed to create system user torouter. Run this command as root.\x1b[0m");
+            return;
+        }
+    }
+
+    let state_dir_status = std::process::Command::new("install")
+        .args(["-d", "-o", "torouter", "-g", "torouter", "-m", "0700", "/var/lib/torouter"])
+        .status();
+    if !matches!(state_dir_status, Ok(status) if status.success()) {
+        println!("\n\x1b[31m❌ Failed to prepare /var/lib/torouter. Run this command as root.\x1b[0m");
+        return;
+    }
+
     let service_content = format!(r#"[Unit]
 Description=ToRouter Multi-Location Tor Manager
 Documentation=https://github.com/ArashAfkandeh/ToRouter-Multi-Location
@@ -731,6 +763,11 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+User=torouter
+Group=torouter
+StateDirectory=torouter
+StateDirectoryMode=0700
+Environment=TOR_ROUTER_DATA_DIR=/var/lib/torouter
 
 WorkingDirectory={project_dir_str}
 
@@ -753,7 +790,7 @@ PrivateTmp=true
 ProtectSystem=full
 ProtectHome=false
 
-ReadWritePaths={project_dir_str}
+ReadWritePaths={project_dir_str} /var/lib/torouter
 
 [Install]
 WantedBy=multi-user.target

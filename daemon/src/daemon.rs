@@ -197,7 +197,9 @@ pub async fn run_daemon(db_path: &str, api_bind: &str, web_dir: Option<String>) 
     }
 
     let pid = process::id();
-    let temp_dir = std::env::temp_dir();
+    let temp_dir = std::env::var_os("TOR_ROUTER_DATA_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir);
     
     let exe_dir = std::env::current_exe()
         .ok()
@@ -212,6 +214,11 @@ pub async fn run_daemon(db_path: &str, api_bind: &str, web_dir: Option<String>) 
     
     let tor_data_dir_base = temp_dir.join(format!("tor-router-data-{}", pid));
     fs::create_dir_all(&tor_data_dir_base).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&tor_data_dir_base, fs::Permissions::from_mode(0o700)).unwrap();
+    }
 
     let tor_bin_path = match crate::tor_process::prepare_assets(&assets_dir) {
         Ok(p) => p,
@@ -224,9 +231,15 @@ pub async fn run_daemon(db_path: &str, api_bind: &str, web_dir: Option<String>) 
     let geoip_path = assets_dir.join("geoip");
     let geoip6_path = assets_dir.join("geoip6");
 
+    let shutdown_data_dir = tor_data_dir_base.clone();
     tokio::spawn(async move {
         tokio::signal::ctrl_c().await.unwrap();
         info!("🛑 Exit signal received! Cleaning up...");
+        if let Err(error) = fs::remove_dir_all(&shutdown_data_dir) {
+            if error.kind() != std::io::ErrorKind::NotFound {
+                error!("Failed to remove Tor data directory {}: {}", shutdown_data_dir.display(), error);
+            }
+        }
         process::exit(0);
     });
     

@@ -14,6 +14,23 @@ SERVICE_NAME="ToRouter"
 SERVICE_FILE="/opt/ToRouter-Multi-Location/dist/ToRouter.service"
 SERVICE_DEST="/etc/systemd/system/ToRouter.service"
 APP_DIR="/opt/ToRouter-Multi-Location"
+TOR_ROUTER_USER="torouter"
+
+ensure_service_user() {
+    if ! id -u "$TOR_ROUTER_USER" >/dev/null 2>&1; then
+        print_colored "$YELLOW" "👤 Creating system user ${TOR_ROUTER_USER}..."
+        if ! sudo useradd --system --home-dir /var/lib/torouter --create-home \
+            --shell /usr/sbin/nologin "$TOR_ROUTER_USER"; then
+            print_colored "$RED" "✗ Failed to create system user ${TOR_ROUTER_USER}"
+            exit 1
+        fi
+    fi
+
+    if ! sudo install -d -o "$TOR_ROUTER_USER" -g "$TOR_ROUTER_USER" -m 0700 /var/lib/torouter; then
+        print_colored "$RED" "✗ Failed to prepare /var/lib/torouter"
+        exit 1
+    fi
+}
 
 # Function to print colored commands
 print_commands() {
@@ -162,6 +179,13 @@ start_service() {
     
     # Check if service file exists
     check_service_file
+
+    # Run the daemon and its Tor children without root privileges.
+    ensure_service_user
+    sudo chown -R "$TOR_ROUTER_USER:$TOR_ROUTER_USER" "$APP_DIR/dist/assets"
+    if [ -f "$APP_DIR/dist/ToRouter.sqlite" ]; then
+        sudo chown "$TOR_ROUTER_USER:$TOR_ROUTER_USER" "$APP_DIR/dist/ToRouter.sqlite"
+    fi
     
     # Copy service file
     print_colored "$YELLOW" "📁 Copying service file to /etc/systemd/system/..."

@@ -108,6 +108,14 @@ impl TorInstance {
     }
 }
 
+fn remove_instance_dir(instance_dir: &Path) {
+    if let Err(error) = std::fs::remove_dir_all(instance_dir) {
+        if error.kind() != std::io::ErrorKind::NotFound {
+            warn!("Failed to remove Tor data directory {}: {}", instance_dir.display(), error);
+        }
+    }
+}
+
 pub fn get_free_port() -> Result<u16, String> {
     std::net::TcpListener::bind("127.0.0.1:0")
         .map_err(|e| e.to_string())
@@ -127,7 +135,20 @@ pub async fn start_tor_instance(
 
     let instance_name = format!("{}_{}", name, now_iso());
     let instance_dir = tor_data_root.join(&instance_name);
-    std::fs::create_dir_all(&instance_dir).map_err(|e| e.to_string())?;
+    if let Err(error) = std::fs::create_dir_all(&instance_dir) {
+        return Err(error.to_string());
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Err(error) = std::fs::set_permissions(
+            &instance_dir,
+            std::fs::Permissions::from_mode(0o700),
+        ) {
+            remove_instance_dir(&instance_dir);
+            return Err(error.to_string());
+        }
+    }
 
     let torrc_path = instance_dir.join("torrc");
     let mut torrc = String::new();
@@ -145,7 +166,21 @@ pub async fn start_tor_instance(
     torrc.push_str("Log notice stdout\n");
     torrc.push_str("AvoidDiskWrites 1\n");
 
-    std::fs::write(&torrc_path, torrc).map_err(|e| e.to_string())?;
+    if let Err(error) = std::fs::write(&torrc_path, torrc) {
+        remove_instance_dir(&instance_dir);
+        return Err(error.to_string());
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Err(error) = std::fs::set_permissions(
+            &torrc_path,
+            std::fs::Permissions::from_mode(0o600),
+        ) {
+            remove_instance_dir(&instance_dir);
+            return Err(error.to_string());
+        }
+    }
 
     let mut cmd = Command::new(&tor_bin);
     cmd.arg("-f").arg(&torrc_path)
@@ -177,7 +212,13 @@ pub async fn start_tor_instance(
         });
     }
 
-    let mut child = cmd.spawn().map_err(|e| e.to_string())?;
+    let mut child = match cmd.spawn() {
+        Ok(child) => child,
+        Err(error) => {
+            remove_instance_dir(&instance_dir);
+            return Err(error.to_string());
+        }
+    };
     let stdout = child.stdout.take().unwrap();
     let stderr = child.stderr.take().unwrap();
     
@@ -220,6 +261,8 @@ pub async fn start_tor_instance(
 
     if !bootstrapped {
         let _ = child.kill().await;
+        let _ = child.wait().await;
+        remove_instance_dir(&instance_dir);
         return Err("Bootstrap timeout".to_string());
     }
     
@@ -227,17 +270,24 @@ pub async fn start_tor_instance(
 
     let (kill_tx, kill_rx) = tokio::sync::oneshot::channel::<()>();
     
+    let instance_dir_for_task = instance_dir.clone();
     tokio::spawn(async move {
         tokio::select! {
             _ = kill_rx => { let _ = child.kill().await; }
             _ = child.wait() => {}
         }
         let _ = child.wait().await;
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        remove_instance_dir(&instance_dir_for_task);
     });
 
     let proxy = reqwest::Proxy::all(format!("socks5h://{}", socks_addr)).map_err(|e| e.to_string())?;
-    let client = reqwest::Client::builder().proxy(proxy).timeout(Duration::from_secs(10)).build().map_err(|e| e.to_string())?;
+    let client = match reqwest::Client::builder().proxy(proxy).timeout(Duration::from_secs(10)).build() {
+        Ok(client) => client,
+        Err(error) => {
+            remove_instance_dir(&instance_dir);
+            return Err(error.to_string());
+        }
+    };
 
     Ok(TorInstance {
         socks_addr,

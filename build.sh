@@ -208,6 +208,7 @@ check_tool() {
             rsync)       install_rsync ;;
             tor)         install_tor_deps ;;
             jq)          install_jq ;;
+            curl)       log_error "Tool 'curl' not found."; exit 1 ;;
             *) log_error "Tool '$1' not found."; exit 1 ;;
         esac
     fi
@@ -217,6 +218,7 @@ check_tool() {
 download_tor_assets_to_dist() {
     log_step "Downloading fresh Tor Assets directly to output folder..."
     
+    check_tool curl
     check_tool jq
 
     local arch
@@ -233,16 +235,43 @@ download_tor_assets_to_dist() {
     esac
 
     log_info "Fetching latest Tor stable version..."
-    local api_url="https://aus1.torproject.org/torbrowser/update_3/release/downloads.json"
-    
-    set +eo pipefail
-    local version
-    version=$(curl -sL --connect-timeout 10 "$api_url" | jq -r '.version' 2>/dev/null)
-    local curl_exit=${PIPESTATUS[0]}
-    set -eo pipefail
+    local version="${TOR_VERSION:-}"
+    local metadata_file
+    metadata_file=$(mktemp)
 
-    if [[ $curl_exit -ne 0 || -z "$version" || "$version" == "null" ]]; then
-        log_error "Failed to fetch version from Tor API. Check your internet connection."
+    if [[ -z "$version" ]]; then
+        local api_url
+        for api_url in \
+            "https://aus1.torproject.org/torbrowser/update_3/release/downloads.json" \
+            "https://aus2.torproject.org/torbrowser/update_3/release/downloads.json"; do
+            log_info "Trying Tor metadata: $api_url"
+            if curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 15 \
+                --max-time 60 -o "$metadata_file" "$api_url"; then
+                version=$(jq -er '.version // empty' "$metadata_file" 2>/dev/null || true)
+                if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                    break
+                fi
+                version=""
+            fi
+        done
+    fi
+
+    if [[ -z "$version" ]]; then
+        log_warn "Tor metadata API unavailable; checking the official download index..."
+        local index_html
+        index_html=$(curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 15 \
+            --max-time 60 "https://dist.torproject.org/torbrowser/") || true
+        version=$(printf '%s\n' "$index_html" \
+            | grep -oE '>[0-9]+\.[0-9]+\.[0-9]+/?</a>' \
+            | sed 's/[><]//g' \
+            | sed 's#/$##' \
+            | sort -V \
+            | tail -n 1)
+    fi
+
+    rm -f "$metadata_file"
+    if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        log_error "Unable to determine a valid Tor version. Set TOR_VERSION, for example: TOR_VERSION=15.0.22 bash build.sh"
         exit 1
     fi
 
@@ -255,7 +284,8 @@ download_tor_assets_to_dist() {
     
     log_info "Downloading Tor Expert Bundle..."
     set +eo pipefail
-    curl -# -L --connect-timeout 20 -o "$tar_file" "$download_url"
+    curl -# -fL --retry 3 --retry-delay 2 --connect-timeout 20 \
+        --max-time 600 -o "$tar_file" "$download_url"
     local dl_status=$?
     set -eo pipefail
     
