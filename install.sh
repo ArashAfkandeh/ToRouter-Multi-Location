@@ -44,18 +44,32 @@ check_root() {
 
 # Get latest version tag
 get_latest_version() {
-    local tag=$(curl -s "${GITHUB_API}/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' | tr -d '[:space:]')
+    local tag
+    local metadata_file
+    metadata_file=$(mktemp)
+    if ! curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 15 \
+        -o "$metadata_file" "${GITHUB_API}/latest"; then
+        rm -f "$metadata_file"
+        return 1
+    fi
+    tag=$(sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' \
+        "$metadata_file" | head -n 1 | tr -d '[:space:]')
+    rm -f "$metadata_file"
     echo "$tag"
 }
 
 # Get actual asset filename for download
 get_asset_name() {
     local tag=$1
-    local asset=$(curl -s "${GITHUB_API}/tags/${tag}" | grep -o '"name": "[^"]*tar.gz"' | head -1 | sed -E 's/.*"name": "([^"]+)".*/\1/')
-    if [ -z "$asset" ]; then
-        # Fallback
-        asset="ToRouter-Multi-Location-v1.1.2.tar.gz"
-    fi
+    local release_json
+    release_json=$(curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 15 \
+        "${GITHUB_API}/tags/${tag}") || return 1
+
+    local asset
+    asset=$(printf '%s\n' "$release_json" \
+        | grep -oE '"name"[[:space:]]*:[[:space:]]*"[^"]+\.tar\.gz"' \
+        | head -1 \
+        | sed -E 's/.*"name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
     echo "$asset"
 }
 
@@ -74,8 +88,21 @@ download_tarball() {
         tag="$requested_version"
         print_colored "$YELLOW" "🔍 Using specified version/tag: ${tag}"
     fi
+
+    if [ -z "$tag" ]; then
+        print_colored "$RED" "✗ Error: Could not determine a GitHub release tag."
+        exit 1
+    fi
     
-    asset_name=$(get_asset_name "$tag")
+    if ! asset_name=$(get_asset_name "$tag"); then
+        print_colored "$RED" "✗ Error: Could not query GitHub release ${tag}."
+        exit 1
+    fi
+    if [ -z "$asset_name" ]; then
+        print_colored "$RED" "✗ Error: Release ${tag} has no .tar.gz installer asset."
+        print_colored "$YELLOW" "ℹ Build and upload ToRouter-Multi-Location-${tag}.tar.gz to this GitHub release, then retry."
+        exit 1
+    fi
     download_url="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${tag}/${asset_name}"
     
     print_colored "$YELLOW" "📥 Downloading: ${asset_name}"

@@ -182,10 +182,15 @@ start_service() {
 
     # Run the daemon and its Tor children without root privileges.
     ensure_service_user
-    sudo chown -R "$TOR_ROUTER_USER:$TOR_ROUTER_USER" "$APP_DIR/dist/assets"
+    # SQLite may create WAL/SHM files and restore uploads beside the database.
+    sudo chown "$TOR_ROUTER_USER:$TOR_ROUTER_USER" "$APP_DIR/dist"
+    sudo chmod 0755 "$APP_DIR/dist"
     if [ -f "$APP_DIR/dist/ToRouter.sqlite" ]; then
-        sudo chown "$TOR_ROUTER_USER:$TOR_ROUTER_USER" "$APP_DIR/dist/ToRouter.sqlite"
+        sudo chown "$TOR_ROUTER_USER:$TOR_ROUTER_USER" \
+            "$APP_DIR/dist/ToRouter.sqlite"
+        sudo chmod 0640 "$APP_DIR/dist/ToRouter.sqlite"
     fi
+    sudo chown -R "$TOR_ROUTER_USER:$TOR_ROUTER_USER" "$APP_DIR/dist/assets"
     
     # Copy service file
     print_colored "$YELLOW" "📁 Copying service file to /etc/systemd/system/..."
