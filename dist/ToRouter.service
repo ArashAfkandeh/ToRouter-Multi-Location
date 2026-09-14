@@ -11,6 +11,7 @@ Group=torouter
 StateDirectory=torouter
 StateDirectoryMode=0700
 Environment=TOR_ROUTER_DATA_DIR=/var/lib/torouter
+Environment=TOR_ROUTER_DB_PATH=/var/lib/torouter/ToRouter.sqlite
 
 WorkingDirectory=/opt/ToRouter-Multi-Location
 

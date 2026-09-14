@@ -28,8 +28,11 @@ fn setup_auto_symlink() {
     }
 }
 
-/// Creates db path next to binary (ToRouter.sqlite)
+/// Uses the service state database when configured, otherwise keeps local CLI behavior.
 fn db_path_next_to_exe() -> String {
+    if let Some(path) = env::var_os("TOR_ROUTER_DB_PATH") {
+        return PathBuf::from(path).to_string_lossy().into_owned();
+    }
     env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|d| d.join("ToRouter.sqlite")))

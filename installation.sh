@@ -182,14 +182,22 @@ start_service() {
 
     # Run the daemon and its Tor children without root privileges.
     ensure_service_user
+    local legacy_db="$APP_DIR/dist/ToRouter.sqlite"
+    local state_db="/var/lib/torouter/ToRouter.sqlite"
+    if [ -f "$legacy_db" ] && [ ! -f "$state_db" ]; then
+        print_colored "$YELLOW" "📦 Migrating database to ${state_db}..."
+        if ! sudo cp "$legacy_db" "$state_db"; then
+            print_colored "$RED" "✗ Failed to migrate the database"
+            exit 1
+        fi
+    fi
+    if [ -f "$state_db" ]; then
+        sudo chown "$TOR_ROUTER_USER:$TOR_ROUTER_USER" "$state_db"
+        sudo chmod 0640 "$state_db"
+    fi
     # SQLite may create WAL/SHM files and restore uploads beside the database.
     sudo chown "$TOR_ROUTER_USER:$TOR_ROUTER_USER" "$APP_DIR/dist"
     sudo chmod 0755 "$APP_DIR/dist"
-    if [ -f "$APP_DIR/dist/ToRouter.sqlite" ]; then
-        sudo chown "$TOR_ROUTER_USER:$TOR_ROUTER_USER" \
-            "$APP_DIR/dist/ToRouter.sqlite"
-        sudo chmod 0640 "$APP_DIR/dist/ToRouter.sqlite"
-    fi
     sudo chown -R "$TOR_ROUTER_USER:$TOR_ROUTER_USER" "$APP_DIR/dist/assets"
     
     # Copy service file

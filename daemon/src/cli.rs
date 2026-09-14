@@ -24,6 +24,20 @@ struct RouteStatus {
     last_checked_at: Option<String>,
 }
 
+fn runtime_db_path() -> std::path::PathBuf {
+    if let Some(path) = std::env::var_os("TOR_ROUTER_DB_PATH") {
+        return std::path::PathBuf::from(path);
+    }
+    let state_path = std::path::PathBuf::from("/var/lib/torouter/ToRouter.sqlite");
+    if state_path.exists() {
+        return state_path;
+    }
+    std::env::current_exe()
+        .ok()
+        .and_then(|path| path.parent().map(|dir| dir.join("ToRouter.sqlite")))
+        .unwrap_or_else(|| std::path::PathBuf::from("ToRouter.sqlite"))
+}
+
 #[derive(Deserialize, Debug)]
 struct RouteApiItem {
     id: String,
@@ -45,9 +59,7 @@ struct RouteApiItem {
 }
 
 async fn auto_login(api_url: &str) -> Option<String> {
-    let exe_path = std::env::current_exe().unwrap_or_default();
-    let dir = exe_path.parent().unwrap_or(std::path::Path::new("."));
-    let db_path = dir.join("ToRouter.sqlite");
+    let db_path = runtime_db_path();
     
     if let Ok(settings) = crate::config::load_settings(db_path.to_str().unwrap_or("ToRouter.sqlite")) {
         let payload = serde_json::json!({
@@ -75,9 +87,7 @@ pub async fn run_cli(api_url_base: &str) {
     let mut api_url = api_url_base.trim_end_matches('/').to_string();
     let mut session_cookie: Option<String> = None;
 
-    let exe_path = std::env::current_exe().unwrap_or_default();
-    let dir = exe_path.parent().unwrap_or(std::path::Path::new("."));
-    let db_path = dir.join("ToRouter.sqlite");
+    let db_path = runtime_db_path();
     if let Ok(settings) = crate::config::load_settings(db_path.to_str().unwrap_or("ToRouter.sqlite")) {
         let has_domain = !settings.domain.as_deref().unwrap_or("").trim().is_empty();
         let scheme = if settings.use_custom_cert || has_domain { "https" } else { "http" };
@@ -241,9 +251,7 @@ fn pause() {
 async fn display_panel_info() {
     clear_screen();
     println!("\x1b[1m\x1b[36m═══ ℹ️ Panel Info & Credentials ═══\x1b[0m\n");
-    let exe_path = std::env::current_exe().unwrap_or_default();
-    let dir = exe_path.parent().unwrap_or(std::path::Path::new("."));
-    let db_path = dir.join("ToRouter.sqlite");
+    let db_path = runtime_db_path();
     
     if let Ok(settings) = crate::config::load_settings(db_path.to_str().unwrap_or("ToRouter.sqlite")) {
         let has_domain = !settings.domain.as_deref().unwrap_or("").trim().is_empty();
@@ -662,7 +670,7 @@ async fn start_service() {
     let exe_path = std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("/opt/ToRouter-Multi-Location/dist/ToRouter"));
     let exe_dir = exe_path.parent().unwrap_or(std::path::Path::new("/opt/ToRouter-Multi-Location/dist"));
     let project_dir = exe_dir.parent().unwrap_or(std::path::Path::new("/opt/ToRouter-Multi-Location"));
-    let db_path = exe_dir.join("ToRouter.sqlite");
+    let db_path = runtime_db_path();
 
     let db_path_str = db_path.to_str().unwrap_or("ToRouter.sqlite");
 
@@ -768,6 +776,7 @@ Group=torouter
 StateDirectory=torouter
 StateDirectoryMode=0700
 Environment=TOR_ROUTER_DATA_DIR=/var/lib/torouter
+Environment=TOR_ROUTER_DB_PATH=/var/lib/torouter/ToRouter.sqlite
 
 WorkingDirectory={project_dir_str}
 

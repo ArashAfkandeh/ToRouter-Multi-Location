@@ -917,6 +917,9 @@ pub async fn get_version() -> &'static str {
 }
 
 fn get_db_path() -> std::path::PathBuf {
+    if let Some(path) = std::env::var_os("TOR_ROUTER_DB_PATH") {
+        return std::path::PathBuf::from(path);
+    }
     std::env::current_exe()
         .unwrap()
         .parent()
