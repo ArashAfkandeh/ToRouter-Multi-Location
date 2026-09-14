@@ -55,6 +55,7 @@ get_latest_version() {
     tag=$(sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' \
         "$metadata_file" | head -n 1 | tr -d '[:space:]')
     rm -f "$metadata_file"
+
     echo "$tag"
 }
 
